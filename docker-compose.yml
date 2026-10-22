@@ -1,28 +1,51 @@
+# The demo stack in one command: `docker compose up --build` (or `make up`).
+# Every value has a development default below; a .env next to this file overrides them,
+# and the server overlay (deploy/docker-compose.prod.yml) requires the secrets there.
+
+x-sentinel: &sentinel
+  build: .
+  image: sentinelapi-demo:local
+  environment: &sentinel-env
+    SENTINEL_BACKEND: redis
+    SENTINEL_REDIS_URL: redis://redis:6379/0
+    # The API connects as the app role, which can only add and read audit rows (AR-12).
+    SENTINEL_DATABASE_URL: postgresql+asyncpg://sentinel_app:${SENTINEL_APP_DB_PASSWORD:-sentinel-app}@postgres:5432/sentinelapi
+    SENTINEL_JWT_SECRET: ${SENTINEL_JWT_SECRET:-change-me-in-production}
+    SENTINEL_AUDIT_HASH_KEY: ${SENTINEL_AUDIT_HASH_KEY:-}
+    # Local development only: the demo's events API answers to this token
+    SENTINEL_OPERATOR_TOKEN: ${SENTINEL_OPERATOR_TOKEN:-dev-operator-token}
+    SENTINEL_ENFORCE: "true"
+
 services:
-  api:
-    build: .
-    # The audit table comes from migrations (ADR-0006); SEN-29 moves this to its own service.
-    command: ["sh", "-c", "sentinel migrate && uvicorn examples.demo_app.main:app --host 0.0.0.0 --port 8000"]
-    ports:
-      - "8000:8000"
+  # Runs once, as the table's owner, and exits; the API starts only after it succeeds.
+  # Also how to purge: `docker compose run --rm migrate sentinel purge`.
+  migrate:
+    <<: *sentinel
+    command: ["sentinel", "migrate"]
     environment:
-      SENTINEL_BACKEND: redis
-      SENTINEL_REDIS_URL: redis://redis:6379/0
-      SENTINEL_DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinelapi
-      SENTINEL_JWT_SECRET: change-me-in-production
-      SENTINEL_ENFORCE: "true"
-      # Local development only: the demo's events API answers to this token
-      SENTINEL_OPERATOR_TOKEN: dev-operator-token
+      <<: *sentinel-env
+      SENTINEL_DATABASE_URL: postgresql+asyncpg://sentinel:${POSTGRES_PASSWORD:-sentinel}@postgres:5432/sentinelapi
+      SENTINEL_AUDIT_APP_ROLE: sentinel_app
+    restart: "no"
     depends_on:
-      redis:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
-  redis:
-    image: redis:7-alpine
+  api:
+    <<: *sentinel
     ports:
-      - "6379:6379"
+      - "8000:8000"
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # No published ports: only the stack's own services reach Redis and Postgres.
+  redis:
+    image: redis:7.4.6-alpine
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -30,20 +53,22 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.11-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: sentinel
-      POSTGRES_PASSWORD: sentinel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinel}
       POSTGRES_DB: sentinelapi
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sentinel"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      # Read by deploy/postgres-init/app-role.sh, the first time the volume is created
+      SENTINEL_APP_DB_PASSWORD: ${SENTINEL_APP_DB_PASSWORD:-sentinel-app}
     volumes:
       - sentinelapi_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinelapi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   sentinelapi_pgdata:

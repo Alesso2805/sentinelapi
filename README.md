@@ -81,9 +81,11 @@ Three lines are SentinelAPI's: the import, `install_sentinel(app)`, and the guar
 ### Docker (full stack: API + Redis + Postgres)
 
 ```bash
-docker compose up --build
+docker compose up --build --wait    # or: make up
 curl http://localhost:8000/health
 ```
+
+A `migrate` service creates the audit table as its owner and exits; the API starts after it and connects as a role that can only add and read audit rows. Only the API's port is published. `docker compose run --rm migrate sentinel purge` applies the retention period. On a server, `deploy/docker-compose.prod.yml` adds production settings, requires the secrets in `.env` and puts Caddy in front with HTTPS.
 
 ### Local dev (in-memory backend + SQLite, zero external services)
 

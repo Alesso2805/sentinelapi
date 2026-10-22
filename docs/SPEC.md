@@ -59,8 +59,8 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
 | Demo | Demo app | Login, refresh, `/me`, `/health`, events | Built (SEN-08) |
 | Demo | Attack console | A page where a visitor runs each attack and watches the verdicts | Planned (SEN-32, ADR-0010) |
-| Operations | Compose stack | API, Redis 7, Postgres 16; the API image is multi-stage, pinned (Python 3.12.15, uv 0.11.25), installs exactly `uv.lock`, runs as a non-root user and reports its health | Built (SEN-08, SEN-11, SEN-28); a `migrate` service of its own in SEN-29 |
-| Operations | Deployment | One server, Caddy, HTTPS | Planned (SEN-33, ADR-0009) |
+| Operations | Compose stack | `docker compose up --build`: a `migrate` service runs as the table's owner and exits, then the API starts and connects as `sentinel_app`, which can only add and read audit rows; Redis 7.4 and Postgres 16.11 publish no ports. The API image is multi-stage and pinned, installs exactly `uv.lock`, runs as a non-root user and reports its health | Built (SEN-08, SEN-11, SEN-28, SEN-29) |
+| Operations | Deployment | `deploy/docker-compose.prod.yml`: production settings and secrets from `.env`, Caddy as the only published service, the API trusting only the stack's own network | Overlay built and rehearsed (SEN-29); the server itself is SEN-33 (ADR-0009) |
 | Distribution | Package | Typed wheel on PyPI | Planned (SEN-36, ADR-0008) |
 
 **Out of scope for this plan:**
@@ -109,7 +109,7 @@ The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITEC
 - The middleware is pure ASGI and is installed by `install_sentinel` (done in SEN-22).
 - The audit sink folds events into a bounded set of groups that a background writer stores in batches (done in SEN-25).
 
-**Processes.** SentinelAPI has none of its own: it runs inside the app's process. With several workers or replicas, the counters must live in Redis; the memory backend counts per process (SEN-27 refuses it in production unless explicitly allowed). The demo stack runs the API, Redis and Postgres, plus a `migrate` container from SEN-29.
+**Processes.** SentinelAPI has none of its own: it runs inside the app's process. With several workers or replicas, the counters must live in Redis; the memory backend counts per process (SEN-27 refuses it in production unless explicitly allowed). The demo stack runs the API, Redis and Postgres, after a `migrate` container that runs once and exits (SEN-29).
 
 ## Detection contract
 
@@ -312,7 +312,7 @@ sentinelapi/
 │   ├── integration/              # the demo app; migrations on SQLite and Postgres
 │   └── architecture/             # AR-NN
 ├── benchmarks/                   # SEN-35
-├── deploy/                       # docker-compose.prod.yml, Caddyfile (SEN-29, SEN-33)
+├── deploy/                       # docker-compose.prod.yml, Caddyfile, postgres-init/ (SEN-29)
 ├── docs/
 │   ├── SPEC.md                   # this document
 │   ├── BACKLOG.md                # stories and sprint plan
@@ -324,7 +324,7 @@ sentinelapi/
 │   └── sprints/
 ├── .github/workflows/ci.yml
 ├── scripts/check_imports.py      # AR-06, run by CI without extras
-├── docker-compose.yml            # with the migrate service (SEN-29)
+├── docker-compose.yml            # migrate, api, redis, postgres
 ├── Dockerfile
 ├── Makefile
 ├── pyproject.toml

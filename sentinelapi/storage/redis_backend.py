@@ -10,6 +10,15 @@ from __future__ import annotations
 
 from redis.asyncio import Redis
 
+# Atomic, and never creates a key or turns one negative. KEEPTTL keeps the window (Redis 6+).
+_DECREMENT = """
+local value = redis.call('GET', KEYS[1])
+if not value then return 0 end
+local count = math.max(tonumber(value) - tonumber(ARGV[1]), 0)
+redis.call('SET', KEYS[1], count, 'KEEPTTL')
+return count
+"""
+
 
 class RedisBackend:
     """Atomic, multi-process-safe counters via Redis.
@@ -37,6 +46,9 @@ class RedisBackend:
     async def set_if_absent(self, key: str, value: str, ttl_seconds: int) -> bool:
         result = await self._redis.set(key, value, nx=True, ex=ttl_seconds)
         return bool(result)
+
+    async def decrement(self, key: str, amount: int) -> int:
+        return int(await self._redis.eval(_DECREMENT, 1, key, str(amount)))
 
     async def ttl(self, key: str) -> float:
         milliseconds = await self._redis.pttl(key)

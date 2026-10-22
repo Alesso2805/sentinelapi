@@ -49,8 +49,8 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Rate limiting | Per-client limit | Fixed window of `rate_limit_window_seconds`, one counter per client (its address, since SEN-19), whatever the path; the request after `rate_limit_max_requests` → HIGH, 429 with `Retry-After`; crossing `rate_limit_warn_at` → MEDIUM once per window | Built (SEN-02, SEN-18, SEN-19) |
 | Rate limiting | `Retry-After`, exempt paths, stricter limits per path prefix | `/health` and `/ready` exempt by default; a prefix such as `/auth/` adds its own, stricter counter | Built (SEN-18) |
 | Rate limiting | Client address behind a proxy | Trusted proxies and `X-Forwarded-For`; IPv6 grouped by /64 | Built (SEN-19, ADR-0004) |
-| Brute force | Two axes | Failures per fingerprint (MEDIUM 5, HIGH 10) and per username (HIGH 8, CRITICAL 15) in 15 minutes; a success clears both | Built (SEN-03) |
-| Brute force | A block that holds | Checked before the password; usernames normalized; a success clears only its own source | Planned (SEN-20, ADR-0005) |
+| Brute force | Two axes | Failures per source, the client's address (MEDIUM 5, HIGH 10), and per account, a hash of the normalized username (HIGH 8, CRITICAL 15), in 15 minutes | Built (SEN-03, SEN-19, SEN-20) |
+| Brute force | A block that holds | `check` before the password: a blocked source, or a locked account (`lock`, the default), is refused with 429 until its window ends; `signal` asks the app for a challenge instead. Usernames trimmed and casefolded; a success takes back only that source's failures against that account | Built (SEN-20, ADR-0005) |
 | Token replay | Single-use tokens | Only on `jwt_replay_paths`; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403 | Built (SEN-04); `exp` and `jti` required in SEN-21 |
 | Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory since SEN-17 |
 | Audit | Event log | Table `sentinel_security_events`; the demo's `GET /security/events` | Built (SEN-06); migrations SEN-23, privacy SEN-24, write path SEN-25, protected API SEN-26 |
@@ -98,12 +98,12 @@ The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITEC
 4. Every event is logged with structlog and passed to `on_event`; the demo writes it to the database inside the request.
 5. If enforcement is on and the event is HIGH or CRITICAL: 429 for rate limiting, 403 for anything else. Otherwise the request reaches the app.
 
-**Login flow, as built.** Brute-force detection is not in the middleware (ADR-0003): only the login endpoint knows whether a password was right. The demo's `/auth/login` verifies the password, calls `BruteForceDetector.record_failure` only when it is wrong, and answers 403 instead of 401 when the event is HIGH or CRITICAL. A success calls `record_success`, which clears both counters.
+**Login flow.** Brute-force detection is not in the middleware (ADR-0003): only the login endpoint knows whether a password was right. Since SEN-20 the demo's `/auth/login` asks `BruteForceDetector.check` first and answers 429 with `Retry-After` when the source or the account is blocked, right password or not; then it verifies the password and calls `record_failure` (another 429 if that failure crosses a threshold, 401 otherwise) or `record_success`, which takes back only that source's failures against that account. Until SEN-20 it consulted the detector only after a wrong password, so a block turned a 401 into a 403 and the right password still got in.
 
 **Target.**
 
 - The client's address is resolved through trusted proxies (SEN-19).
-- The login asks `BruteForceDetector.check` before verifying the password (SEN-20).
+- The login asks `BruteForceDetector.check` before verifying the password (done in SEN-20).
 - The middleware is pure ASGI and is installed by `install_sentinel` (SEN-22).
 - `on_event` puts the event on a bounded queue that a background writer drains in batches (SEN-25).
 
@@ -120,7 +120,7 @@ What each verdict means. Every "Target" cell is checked by a test in the story n
 | Client address | Since SEN-19: the direct peer; behind a trusted proxy (`SENTINEL_TRUSTED_PROXIES`), the right-most `X-Forwarded-For` hop no trusted proxy wrote. Before, `request.client.host`: the proxy's address behind one, so every client shared it (seen live as the Docker gateway) | Done (SEN-19, ADR-0004) |
 | Fingerprint | SHA-256 of the address, the User-Agent and the user id, first 32 hex characters; since SEN-19 it only correlates events in the audit trail | Done (SEN-19) |
 | Rate-limit key | Fingerprint + exact path until SEN-19, so a new User-Agent or a new path opened a new counter. Since SEN-18 and SEN-19: the client's address (IPv6 by /64), plus one counter per configured path prefix | Done (SEN-18, SEN-19) |
-| Brute-force keys | Since SEN-19 the client's address for the source axis; the username exactly as typed | The username normalized (trim, casefold), with the normalizer replaceable (SEN-20) |
+| Brute-force keys | Until SEN-19 the fingerprint and the username as typed. Since SEN-20: the client's address for the source axis; a hash of the trimmed, casefolded username for the account axis (the normalizer is replaceable); the pair of both, so a success undoes only its own failures | Done (SEN-19, SEN-20) |
 
 ### Windows
 
@@ -139,9 +139,9 @@ Until SEN-17 the memory backend moved its expiry forward on every hit, so a clie
 | Rate limit | count > 2 × `rate_limit_max_requests` | HIGH, 429: the first block until SEN-18 | (covered by the row above) |
 | Rate limit | count passes `rate_limit_warn_at` (default 80 % of the limit) | MEDIUM, logged once per window since SEN-18 | Done (SEN-18) |
 | Brute force | failures from one source ≥ 5 | MEDIUM | Same |
-| Brute force | failures from one source ≥ 10 | HIGH, 403 | HIGH; the source is refused before its password is checked until the window ends (SEN-20) |
-| Brute force | failures against one username ≥ 8 | HIGH, 403 | Per ADR-0005 |
-| Brute force | failures against one username ≥ 15 | CRITICAL, 403 | Per ADR-0005 |
+| Brute force | failures from one source ≥ 10 | HIGH; 403 for the failed attempt only, until SEN-20 | HIGH; the source is refused before its password is checked until the window ends: done (SEN-20) |
+| Brute force | failures against one username ≥ 8 | HIGH; 403 for the failed attempt only, until SEN-20 | `lock`: HIGH, the account refused from every source until its window ends. `signal`: MEDIUM with `challenge_required`. Done (SEN-20) |
+| Brute force | failures against one username ≥ 15 | CRITICAL; 403 for the failed attempt only, until SEN-20 | `lock`: CRITICAL, refused as above. `signal`: as above. Done (SEN-20) |
 | Token replay | expired token | LOW | Same |
 | Token replay | bad signature or claims; no `jti` | MEDIUM | Same; a token without `exp` too (SEN-21) |
 | Token replay | `jti` already redeemed | CRITICAL, 403 | Same, remembered for the token's whole life (SEN-21) |
@@ -151,7 +151,7 @@ HIGH and CRITICAL block; LOW and MEDIUM are only logged and recorded.
 ### HTTP responses
 
 - **Middleware, enforcing and blocking:** 429 for rate limiting, 403 otherwise, with `{"detail": "Request blocked by SentinelAPI", "reason": "<threat_type>"}`. Since SEN-18 a 429 carries `Retry-After`, the seconds left in the window.
-- **Demo login, as built:** 403 with `"Blocked by SentinelAPI: <detail>"`, which reveals the failure count and the username. Target: 429 with `Retry-After` and no internal detail (SEN-20).
+- **Demo login:** since SEN-20, 429 with `Retry-After` and `{"detail": "Too many failed sign-in attempts. Try again later."}`, the same whether the account exists or not. Until then it was a 403 with `"Blocked by SentinelAPI: <detail>"`, which revealed the failure count and the username.
 - **Shadow mode** (`SENTINEL_ENFORCE=false`): the same events are logged and recorded; nothing is blocked.
 
 ## Data model
@@ -191,7 +191,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window per client; the next one is blocked | Built; until SEN-18 blocking started past twice it |
 | `SENTINEL_RATE_LIMIT_WINDOW_SECONDS` | `60` | Window length | Built |
 | `SENTINEL_BRUTE_FORCE_WINDOW_SECONDS` | `900` | Brute-force window | Built |
-| `SENTINEL_BRUTE_FORCE_PER_FINGERPRINT_MEDIUM` / `_HIGH` | `5` / `10` | Failures from one source | Built |
+| `SENTINEL_BRUTE_FORCE_PER_SOURCE_MEDIUM` / `_HIGH` | `5` / `10` | Failures from one source | Built; named `…_PER_FINGERPRINT_…` until SEN-20 |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` / `_CRITICAL` | `8` / `15` | Failures against one account | Built |
 | `SENTINEL_JWT_SECRET` | `change-me` | Key that verifies tokens | Built; the demo ignores it until SEN-21; production refuses the default in SEN-27 |
 | `SENTINEL_JWT_ALGORITHMS` | `["HS256"]` | Accepted algorithms | Built; the demo ignores it until SEN-21 |
@@ -199,7 +199,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_ENFORCE` | `true` | `false` = shadow mode | Built |
 | `SENTINEL_ENV` | `development` | `production` turns on the refusals of SEN-27 | Planned (SEN-27) |
 | `SENTINEL_ALLOW_MEMORY_BACKEND` | `false` | Lets production run the memory backend, for a single process | Planned (SEN-27) |
-| `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock` or `signal`: what the account axis does (ADR-0005) | Planned (SEN-20) |
+| `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock` or `signal`: what the account axis does (ADR-0005) | Built (SEN-20) |
 | `SENTINEL_TRUSTED_PROXIES` | empty | CIDRs whose `X-Forwarded-For` is believed | Built (SEN-19) |
 | `SENTINEL_RATE_LIMIT_WARN_AT` | 80 % of the limit | MEDIUM threshold, logged once per window | Built (SEN-18) |
 | `SENTINEL_RATE_LIMIT_EXEMPT_PATHS` | `["/health", "/ready"]` | Never counted | Built (SEN-18) |
@@ -220,7 +220,7 @@ The demo app is not part of the library; it is how a visitor and the tests see t
 | --- | --- | --- | --- |
 | GET | `/health` | Public | Liveness; never rate limited (SEN-18) |
 | GET | `/ready` | Public | Redis and database reachable, 503 otherwise. Planned (SEN-30) |
-| POST | `/auth/login` | Public | JSON `{username, password}` → `{access_token, refresh_token}`; 401 wrong credentials; 403 brute force (429 from SEN-20) |
+| POST | `/auth/login` | Public | JSON `{username, password}` → `{access_token, refresh_token}`; 401 wrong credentials; 429 with `Retry-After` while the source or the account is blocked (SEN-20) |
 | POST | `/auth/refresh` | Bearer refresh token | New pair; a replayed token is stopped by the middleware with 403 |
 | GET | `/me` | Bearer access token | `{user}` |
 | GET | `/security/events` | Public today; operator token from SEN-26 | The 50 latest HIGH and CRITICAL events |

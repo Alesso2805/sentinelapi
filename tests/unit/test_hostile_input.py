@@ -30,6 +30,7 @@ async def test_rate_limiter(path: str) -> None:
 async def test_brute_force(username: str) -> None:
     detector = BruteForceDetector(InMemoryBackend())
     events = [await detector.record_failure(FINGERPRINT, username) for _ in range(20)]
+    events.append(await detector.check(FINGERPRINT, username))
     assert all(e is None or isinstance(e, SecurityEvent) for e in events)
     await detector.record_success(FINGERPRINT, username)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,10 +37,13 @@ class SentinelSettings(BaseSettings):
 
     # Brute force
     brute_force_window_seconds: int = 900
-    brute_force_per_fingerprint_medium: int = 5
-    brute_force_per_fingerprint_high: int = 10
+    brute_force_per_source_medium: int = 5
+    brute_force_per_source_high: int = 10
     brute_force_per_username_high: int = 8
     brute_force_per_username_critical: int = 15
+    # ADR-0005. "lock": a targeted account is refused from every source until its
+    # window ends. "signal": events ask the app for a challenge (CAPTCHA, MFA) instead.
+    brute_force_account_action: Literal["lock", "signal"] = "lock"
 
     # JWT replay — must match the secret/algorithm your app issues tokens with
     jwt_secret: str = "change-me"

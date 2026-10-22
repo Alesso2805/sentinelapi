@@ -38,6 +38,11 @@ class CounterBackend(Protocol):
         """Clear a key immediately (e.g. after a successful login)."""
         ...
 
+    async def decrement(self, key: str, amount: int) -> int:
+        """Subtract `amount` from a live counter, never below 0, keeping its
+        window. A missing or expired key stays missing. Returns the new count."""
+        ...
+
     async def ttl(self, key: str) -> float:
         """Seconds until `key` expires, what is left of its window; 0 if it
         does not exist. This is what a Retry-After header tells the client."""

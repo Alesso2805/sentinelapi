@@ -19,7 +19,7 @@
 | SEN-11 | #1, #4 | `uv.lock` (46 packages), dev tools in a dependency group, `.python-version` 3.12, classifiers for 3.11 to 3.15, a Makefile; the README installs with uv or pip | `uv sync --all-extras` then `uv run pytest`: 21 passed; `make check-imports` imports the library with no extra and no dev tool |
 | SEN-12 | #5 | `ruff format` on 13 files; the 4 Ruff errors fixed (`Annotated` dependencies, `StrEnum`); Mypy `strict = true` over `sentinelapi`, `examples` and `tests`; `py.typed` | Ruff 0 errors, 0 files to reformat; Mypy strict: no issues in 28 files; Pytest 21 passed; the enums keep their values; the wheel ships `py.typed` and not the demo |
 | SEN-13 | #6 | `create_app(settings)` in the demo; `tests/unit` and `tests/integration`; each integration test builds its own app with its own memory backend and a SQLite file in `tmp_path`, with the lifespan run; tests for shadow mode, for the audit trail written through `on_event`, and for two apps not sharing counters; a session guard fails the run if any test writes to `./sentinelapi_audit.db`; the pydantic Mypy plugin | 24 passed (15 unit, 9 integration); the demo's database kept its size and timestamp across the run; Ruff, format and Mypy strict clean |
-| SEN-14 | — | — | — |
+| SEN-14 | #7 | `.github/workflows/ci.yml`: Lint and types; Tests on Python 3.11 to 3.15 with a Redis service; Imports with required dependencies only (`scripts/check_imports.py`, AR-06); actions pinned by SHA; `main` protected, requiring all seven checks | The PR's own run: 7 checks green, 3.15 included (uv found wheels for every dependency); the import check loads 17 modules without extras |
 | SEN-15 | — | — | — |
 | SEN-16 | — | — | — |
 

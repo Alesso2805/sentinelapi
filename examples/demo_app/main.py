@@ -22,7 +22,7 @@ from sentinelapi.audit.db import create_engine_and_sessionmaker, init_models, se
 from sentinelapi.audit.repository import SecurityEventRepository
 from sentinelapi.client_address import ClientResolver
 from sentinelapi.config import SentinelSettings
-from sentinelapi.detectors.brute_force import BruteForceDetector
+from sentinelapi.detectors.brute_force import AccountAction, BruteForceDetector
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
 from sentinelapi.detectors.rate_limiter import RateLimiter
 from sentinelapi.domain.entities import SecurityEvent
@@ -78,10 +78,11 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     brute_force_detector = BruteForceDetector(
         backend,
         window_seconds=settings.brute_force_window_seconds,
-        per_fingerprint_medium=settings.brute_force_per_fingerprint_medium,
-        per_fingerprint_high=settings.brute_force_per_fingerprint_high,
+        per_source_medium=settings.brute_force_per_source_medium,
+        per_source_high=settings.brute_force_per_source_high,
         per_username_high=settings.brute_force_per_username_high,
         per_username_critical=settings.brute_force_per_username_critical,
+        account_action=AccountAction(settings.brute_force_account_action),
     )
     jwt_replay_detector = JWTReplayDetector(backend, secret=JWT_SECRET)
     client_resolver = ClientResolver(settings.trusted_proxies)

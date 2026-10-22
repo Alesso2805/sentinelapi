@@ -57,6 +57,14 @@ class InMemoryBackend:
             self._values[key] = (value, now + ttl_seconds)
             return True
 
+    async def decrement(self, key: str, amount: int) -> int:
+        async with self._lock:
+            count, expires_at = self._counters.get(key, (0, 0.0))
+            if self._clock.monotonic() >= expires_at:
+                return 0
+            self._counters[key] = (max(count - amount, 0), expires_at)
+            return max(count - amount, 0)
+
     async def ttl(self, key: str) -> float:
         async with self._lock:
             now = self._clock.monotonic()

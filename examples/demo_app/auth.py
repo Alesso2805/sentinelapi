@@ -8,6 +8,7 @@ sha256 alone is not an acceptable password hash in production.
 from __future__ import annotations
 
 import hashlib
+import math
 import time
 import uuid
 from typing import Annotated, cast
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 
 from sentinelapi.client_address import ClientResolver
 from sentinelapi.detectors.brute_force import BruteForceDetector
+from sentinelapi.domain.entities import SecurityEvent
 from sentinelapi.logging_config import security_logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -84,25 +86,43 @@ async def login(
         user_agent=request.headers.get("user-agent", ""),
     )
 
+    # Before the password: a blocked source or account stays blocked even
+    # when the attacker finally guesses right (ADR-0005).
+    await _refuse_if_blocking(
+        request, await detector.check(fingerprint, payload.username, path="/auth/login")
+    )
+
     stored_hash = _USERS.get(payload.username)
     if stored_hash is None or stored_hash != _hash_password(payload.password):
         event = await detector.record_failure(fingerprint, payload.username, path="/auth/login")
-        if event is not None:
-            await security_logger.awarning(
-                "security_event",
-                threat_type=event.threat_type.value,
-                threat_level=event.threat_level.value,
-                path=event.path,
-                fingerprint=event.fingerprint.key,
-                detail=event.detail,
-            )
-            await request.app.state.persist_event(event)
-            if event.is_blocking():
-                raise HTTPException(status_code=403, detail=f"Blocked by SentinelAPI: {event.detail}")
+        await _refuse_if_blocking(request, event)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     await detector.record_success(fingerprint, payload.username)
     return _issue_tokens(payload.username)
+
+
+async def _refuse_if_blocking(request: Request, event: SecurityEvent | None) -> None:
+    if event is None:
+        return
+    await security_logger.awarning(
+        "security_event",
+        threat_type=event.threat_type.value,
+        threat_level=event.threat_level.value,
+        path=event.path,
+        fingerprint=event.fingerprint.key,
+        detail=event.detail,
+    )
+    await request.app.state.persist_event(event)
+    if event.is_blocking():
+        # The same answer whether the account exists or not, with nothing an
+        # attacker could use: no count, no username, no axis.
+        retry_after = max(1, math.ceil(event.retry_after or 1))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed sign-in attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 @router.post("/refresh", response_model=TokenResponse)

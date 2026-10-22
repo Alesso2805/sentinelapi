@@ -40,7 +40,19 @@ async def test_repeated_failed_logins_eventually_blocked(client: AsyncClient) ->
         await client.post("/auth/login", json={"username": "nobody@example.com", "password": "guess"})
         for _ in range(12)
     ]
-    assert responses[-1].status_code == 403
+    assert [r.status_code for r in responses[:7]] == [401] * 7
+    assert responses[-1].status_code == 429
+    assert int(responses[-1].headers["Retry-After"]) > 0
+    # Nothing an attacker could use: no count, no username.
+    assert responses[-1].json() == {"detail": "Too many failed sign-in attempts. Try again later."}
+
+
+async def test_the_right_password_does_not_lift_a_block(client: AsyncClient) -> None:
+    """The audit's probe 7: after 12 failures, the right password used to get tokens."""
+    for _ in range(12):
+        await client.post("/auth/login", json={**ALICE, "password": "wrong"})
+    response = await client.post("/auth/login", json=ALICE)
+    assert response.status_code == 429
 
 
 async def test_refresh_token_cannot_be_replayed(client: AsyncClient) -> None:

@@ -5,6 +5,7 @@ Protocol. That's what lets `InMemoryBackend` run in tests and CI with zero
 external services, while `RedisBackend` handles the real multi-process
 production case, without a single line of detector code changing.
 """
+
 from __future__ import annotations
 
 from typing import Protocol

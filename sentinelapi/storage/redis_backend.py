@@ -6,6 +6,7 @@ access to run a Redis server — but it implements the exact same
 `CounterBackend` protocol as `InMemoryBackend`, so the detectors don't
 know or care which one they're talking to.
 """
+
 from __future__ import annotations
 
 from redis.asyncio import Redis

@@ -12,6 +12,7 @@ fragile. So brute-force is intentionally NOT in this middleware; it's
 exposed as `BruteForceDetector` for your login endpoint to call directly
 (see examples/demo_app/auth.py for the pattern).
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -19,11 +20,12 @@ from collections.abc import Awaitable, Callable
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
 from sentinelapi.detectors.fingerprint import build_fingerprint
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
 from sentinelapi.detectors.rate_limiter import RateLimiter
-from sentinelapi.domain.entities import SecurityEvent
+from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent
 from sentinelapi.logging_config import security_logger
 
 OnEvent = Callable[[SecurityEvent], Awaitable[None]]
@@ -32,7 +34,7 @@ OnEvent = Callable[[SecurityEvent], Awaitable[None]]
 class SentinelMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         *,
         rate_limiter: RateLimiter,
         jwt_replay_detector: JWTReplayDetector | None = None,
@@ -64,17 +66,18 @@ class SentinelMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-    async def _check_rate_limit(self, request: Request, fingerprint) -> Response | None:
+    async def _check_rate_limit(self, request: Request, fingerprint: RequestFingerprint) -> Response | None:
         event = await self._rate_limiter.check(fingerprint, request.url.path)
         return await self._handle_event(event)
 
-    async def _check_jwt_replay(self, request: Request, fingerprint) -> Response | None:
+    async def _check_jwt_replay(self, request: Request, fingerprint: RequestFingerprint) -> Response | None:
+        detector = self._jwt_replay_detector
         auth_header = request.headers.get("authorization", "")
-        if not auth_header.lower().startswith("bearer "):
+        if detector is None or not auth_header.lower().startswith("bearer "):
             return None  # no token to check; let the normal auth dependency reject it
         token = auth_header.split(" ", 1)[1]
 
-        event = await self._jwt_replay_detector.check(token, fingerprint, request.url.path)
+        event = await detector.check(token, fingerprint, request.url.path)
         return await self._handle_event(event)
 
     async def _handle_event(self, event: SecurityEvent | None) -> Response | None:

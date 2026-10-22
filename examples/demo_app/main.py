@@ -7,9 +7,12 @@ This wires every SentinelAPI piece into one small, runnable app:
 - Every HIGH/CRITICAL event persisted to the audit DB and viewable at
   GET /security/events
 """
+
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 import jwt
 from fastapi import Depends, FastAPI, HTTPException
@@ -24,6 +27,7 @@ from sentinelapi.detectors.rate_limiter import RateLimiter
 from sentinelapi.domain.entities import SecurityEvent
 from sentinelapi.logging_config import configure_logging
 from sentinelapi.middleware import SentinelMiddleware
+from sentinelapi.storage.backend import CounterBackend
 from sentinelapi.storage.memory_backend import InMemoryBackend
 
 from .auth import JWT_SECRET
@@ -41,7 +45,7 @@ async def persist_event(event: SecurityEvent) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await init_models(engine)
     yield
     await engine.dispose()
@@ -53,6 +57,7 @@ app = FastAPI(title="SentinelAPI demo", lifespan=lifespan)
 # nothing else running (what you get with a plain `uvicorn` run); "redis"
 # is what docker-compose sets, since in-memory counts don't cross the
 # process boundary the moment you run more than one worker.
+backend: CounterBackend
 if settings.backend == "redis":
     from sentinelapi.storage.redis_backend import RedisBackend
 
@@ -93,7 +98,7 @@ _security = HTTPBearer()
 
 
 @app.get("/me")
-async def me(creds: HTTPAuthorizationCredentials = Depends(_security)) -> dict:
+async def me(creds: Annotated[HTTPAuthorizationCredentials, Depends(_security)]) -> dict[str, str]:
     try:
         payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=["HS256"])
     except jwt.InvalidTokenError:
@@ -102,7 +107,7 @@ async def me(creds: HTTPAuthorizationCredentials = Depends(_security)) -> dict:
 
 
 @app.get("/security/events")
-async def recent_security_events() -> list[dict]:
+async def recent_security_events() -> list[dict[str, str | float]]:
     """Demo-only admin view — put real auth in front of this before
     shipping; it's here so you can *see* SentinelAPI working."""
     async with session_scope(session_factory) as session:
@@ -120,5 +125,5 @@ async def recent_security_events() -> list[dict]:
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health() -> dict[str, str]:
     return {"status": "ok"}

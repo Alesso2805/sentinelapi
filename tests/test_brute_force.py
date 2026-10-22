@@ -29,7 +29,7 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         event = None
         for _ in range(6):
             event = await self.detector.record_failure(fp, "alice@example.com")
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_level, ThreatLevel.HIGH)
 
     async def test_credential_stuffing_from_many_ips_is_caught_by_username_axis(self) -> None:
@@ -40,7 +40,7 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
             fp = build_fingerprint(f"203.0.113.{i}", "ua")  # different IP every time
             event = await self.detector.record_failure(fp, "bob@example.com")
 
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_level, ThreatLevel.CRITICAL)
         self.assertIn("bob@example.com", event.detail)
 

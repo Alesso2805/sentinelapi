@@ -10,7 +10,10 @@ They were written against the documented FastAPI/httpx APIs but not
 executed in the sandbox this project was built in, which has no network
 access to install these packages — see the project README for details.
 """
+
 from __future__ import annotations
+
+from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -20,7 +23,7 @@ from examples.demo_app.main import app
 
 
 @pytest.fixture
-async def client():
+async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
         yield ac

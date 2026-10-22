@@ -296,7 +296,7 @@ sentinelapi/
 │   ├── middleware.py             # pure ASGI from SEN-22
 │   ├── config.py
 │   ├── logging_config.py
-│   └── py.typed                  # SEN-12
+│   └── py.typed
 ├── examples/demo_app/            # + attack console (SEN-32)
 ├── tests/
 │   ├── unit/                     # SEN-13

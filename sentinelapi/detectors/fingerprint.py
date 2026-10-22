@@ -4,6 +4,7 @@ We hash IP + User-Agent (+ optional user id) instead of storing them raw,
 so audit logs are useful for correlation ("same fingerprint hit 40 failed
 logins") without becoming a raw trove of PII.
 """
+
 from __future__ import annotations
 
 import hashlib

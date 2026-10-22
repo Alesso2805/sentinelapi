@@ -106,7 +106,8 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 | Variable | Default | Purpose |
 |---|---|---|
 | `SENTINEL_BACKEND` | `memory` | `memory` (dev/single-process) or `redis` (production) |
-| `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window. Going over it is logged; requests are blocked only past twice this number, which SEN-18 changes |
+| `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window per client, whatever the path. The next one gets a 429 with `Retry-After`; passing 80 % of it (`SENTINEL_RATE_LIMIT_WARN_AT`) logs a warning |
+| `SENTINEL_RATE_LIMIT_PATHS` | `{}` | Stricter limits per path prefix on top of that, e.g. `{"/auth/": 10}`. `/health` and `/ready` are never counted (`SENTINEL_RATE_LIMIT_EXEMPT_PATHS`) |
 | `SENTINEL_TRUSTED_PROXIES` | `[]` | CIDRs of your reverse proxies. Their `X-Forwarded-For` is believed, right-most hop first; with none, the direct peer is the client, so no header can choose its address |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` | `8` | Failed attempts against one account (any source) before blocking |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay |
@@ -116,7 +117,6 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 
 Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
 
-- **Blocking starts past twice the configured limit** (SEN-18).
 - **A brute-force block does not stop the right password.** It only turns the failed login's 401 into a 403 (SEN-20).
 - **Usernames are counted as typed,** so changing their case splits the per-account count, and the account owner's successful login erases failures that came from other sources (SEN-20).
 - **A single-use token without `exp` is remembered for one hour only** (SEN-21).

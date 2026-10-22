@@ -15,6 +15,7 @@ exposed as `BruteForceDetector` for your login endpoint to call directly
 
 from __future__ import annotations
 
+import math
 from collections.abc import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -100,8 +101,12 @@ class SentinelMiddleware(BaseHTTPMiddleware):
 
         if self._enforce and event.is_blocking():
             status_code = 429 if event.threat_type.value == "rate_limit_exceeded" else 403
+            headers = {}
+            if event.retry_after is not None:
+                headers["Retry-After"] = str(max(1, math.ceil(event.retry_after)))
             return JSONResponse(
                 status_code=status_code,
                 content={"detail": "Request blocked by SentinelAPI", "reason": event.threat_type.value},
+                headers=headers,
             )
         return None

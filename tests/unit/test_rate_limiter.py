@@ -12,13 +12,19 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         self.backend = InMemoryBackend()
         self.fp = build_fingerprint("203.0.113.7", "pytest-agent")
 
-    async def test_requests_under_limit_pass_silently(self) -> None:
+    async def test_requests_under_the_warning_threshold_pass_silently(self) -> None:
         limiter = RateLimiter(self.backend, max_requests=5, window_seconds=60)
-        for _ in range(5):
-            event = await limiter.check(self.fp, "/api/widgets")
-            self.assertIsNone(event)
+        for _ in range(4):  # 80 % of 5
+            self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
 
-    async def test_exceeding_limit_raises_medium_event(self) -> None:
+    async def test_crossing_the_warning_threshold_logs_medium_once(self) -> None:
+        limiter = RateLimiter(self.backend, max_requests=10, window_seconds=60)
+        events = [await limiter.check(self.fp, "/api/widgets") for _ in range(10)]
+        levels = [e.threat_level if e else None for e in events]
+        self.assertEqual(levels, [None] * 8 + [ThreatLevel.MEDIUM, None])
+
+    async def test_the_request_after_the_limit_is_blocked(self) -> None:
+        """SEN-18: with a limit of 60, the 61st request used to pass until the 121st."""
         limiter = RateLimiter(self.backend, max_requests=3, window_seconds=60)
         for _ in range(3):
             self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
@@ -26,7 +32,9 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         event = await limiter.check(self.fp, "/api/widgets")
         assert event is not None
         self.assertEqual(event.threat_type, ThreatType.RATE_LIMIT_EXCEEDED)
-        self.assertEqual(event.threat_level, ThreatLevel.MEDIUM)
+        self.assertEqual(event.threat_level, ThreatLevel.HIGH)
+        assert event.retry_after is not None
+        self.assertTrue(0 < event.retry_after <= 60)
 
     async def test_severe_overshoot_escalates_to_high(self) -> None:
         limiter = RateLimiter(self.backend, max_requests=3, window_seconds=60)
@@ -36,15 +44,37 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         assert event is not None
         self.assertEqual(event.threat_level, ThreatLevel.HIGH)
 
-    async def test_limits_are_isolated_per_path(self) -> None:
+    async def test_a_new_path_does_not_open_a_new_counter(self) -> None:
         limiter = RateLimiter(self.backend, max_requests=2, window_seconds=60)
-        await limiter.check(self.fp, "/api/widgets")
-        await limiter.check(self.fp, "/api/widgets")
-        event_a = await limiter.check(self.fp, "/api/widgets")
-        event_b = await limiter.check(self.fp, "/api/gadgets")
+        await limiter.check(self.fp, "/api/widgets/1")
+        await limiter.check(self.fp, "/api/widgets/2")
+        event = await limiter.check(self.fp, "/api/widgets/3")
+        assert event is not None
+        self.assertEqual(event.threat_level, ThreatLevel.HIGH)
 
-        assert event_a is not None  # third hit on /widgets: over the limit
-        self.assertIsNone(event_b)  # first hit on /gadgets: fresh counter
+    async def test_a_prefix_limit_is_stricter_than_the_client_limit(self) -> None:
+        limiter = RateLimiter(self.backend, max_requests=100, path_limits={"/auth/": 2})
+        events = [await limiter.check(self.fp, "/auth/login") for _ in range(3)]
+        assert events[2] is not None
+        self.assertEqual(events[2].threat_level, ThreatLevel.HIGH)
+        self.assertIn("/auth/", events[2].detail)
+        self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
+
+    async def test_exempt_paths_are_never_counted(self) -> None:
+        limiter = RateLimiter(self.backend, max_requests=1, exempt_paths={"/health"})
+        for _ in range(10):
+            self.assertIsNone(await limiter.check(self.fp, "/health"))
+        self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
+
+    async def test_retry_after_is_what_is_left_of_the_window(self) -> None:
+        clock = FakeClock()
+        backend = InMemoryBackend(clock=clock)
+        limiter = RateLimiter(backend, max_requests=1, window_seconds=60, clock=clock)
+        await limiter.check(self.fp, "/api/widgets")
+        clock.advance(20)
+        event = await limiter.check(self.fp, "/api/widgets")
+        assert event is not None
+        self.assertEqual(event.retry_after, 40)
 
     async def test_limits_are_isolated_per_fingerprint(self) -> None:
         limiter = RateLimiter(self.backend, max_requests=1, window_seconds=60)
@@ -59,7 +89,7 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         events = [
             await limiter.check(build_fingerprint("203.0.113.7", f"ua-{i}"), "/api") for i in range(500)
         ]
-        self.assertEqual(sum(e is not None for e in events), 495)
+        self.assertEqual(sum(e is not None and e.is_blocking() for e in events), 495)
 
     async def test_a_client_under_its_limit_is_never_blocked(self) -> None:
         """The audit's probe 1: one request every 2 s against 60 per 60 s,

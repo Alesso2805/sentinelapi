@@ -16,7 +16,7 @@ from sentinelapi.storage.backend import CounterBackend
 
 from .conftest import FACTORIES
 
-PROTOCOL_METHODS = {"incr_with_expiry", "get", "set_if_absent", "reset"}
+PROTOCOL_METHODS = {"incr_with_expiry", "get", "set_if_absent", "reset", "ttl"}
 
 
 def test_every_backend_is_covered() -> None:
@@ -71,3 +71,15 @@ async def test_reset_clears_counters_and_values(backend: CounterBackend) -> None
     await backend.reset("v")
     assert await backend.get("k") == 0
     assert await backend.set_if_absent("v", "x", 60) is True
+
+
+async def test_ttl_is_what_is_left_of_the_window(backend: CounterBackend) -> None:
+    await backend.incr_with_expiry("k", 60)
+    await asyncio.sleep(0.3)
+    assert 59 <= await backend.ttl("k") <= 59.8
+    await backend.set_if_absent("v", "x", 30)
+    assert 29 <= await backend.ttl("v") <= 30
+
+
+async def test_ttl_of_unknown_keys_is_zero(backend: CounterBackend) -> None:
+    assert await backend.ttl("never-seen") == 0

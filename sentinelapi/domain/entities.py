@@ -46,6 +46,7 @@ class SecurityEvent:
     path: str
     detail: str
     occurred_at: float  # seconds since the epoch, from the detector's Clock (AR-16)
+    retry_after: float | None = None  # seconds until a block lifts, for the Retry-After header
 
     def is_blocking(self) -> bool:
         return self.threat_level in (ThreatLevel.HIGH, ThreatLevel.CRITICAL)

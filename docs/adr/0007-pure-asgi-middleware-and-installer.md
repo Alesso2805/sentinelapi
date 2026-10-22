@@ -1,6 +1,6 @@
 # ADR-0007: A pure ASGI middleware, installed by one call
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** ADR-0001; ADR-0003; ARCHITECTURE_RULES.md AR-15; SEN-22
 
@@ -16,7 +16,7 @@ Wiring is also manual. The demo's `main.py` builds the settings, the backend, th
 2. **A pure ASGI middleware:** a class with `__call__(scope, receive, send)` that inspects the scope, answers directly when it blocks, and otherwise passes `receive` and `send` through untouched.
 3. **FastAPI dependencies instead of a middleware,** opt-in per route. Precise, but easy to forget on a new route, and the rate limit would no longer cover everything.
 
-## Decision (proposed)
+## Decision
 
 Option 2, plus an installer:
 

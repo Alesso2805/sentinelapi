@@ -2,7 +2,7 @@
 
 Oct 22, 2026 · Sources: [SPEC.md](SPEC.md), [BACKLOG.md](BACKLOG.md), [CLAUDE.md](../CLAUDE.md), the README, the module docstrings and [the ADRs](adr/).
 
-Each rule is one sentence that a test can prove or refute. A rule about "every" module, backend, setting or route is checked by a test that walks the whole list, so something new that breaks it fails without anyone adding a case. The tests do not exist yet: they are SEN-15, which waits for the tool below to be confirmed.
+Each rule is one sentence that a test can prove or refute. A rule about "every" module, backend, setting or route is checked by a test that walks the whole list, so something new that breaks it fails without anyone adding a case. The tests do not exist yet: they are SEN-15. AR-16 to AR-18 were proposed rules until the product owner adopted them on 2026-10-22.
 
 ## Rules
 
@@ -23,6 +23,9 @@ Each rule is one sentence that a test can prove or refute. A rule about "every" 
 | AR-13 | No raw client address, username or token is written to the audit table or to the security log. | `detectors/fingerprint.py` docstring ("without becoming a raw trove of PII"); SPEC › Non-functional requirements › Privacy; ADR-0006 | Pytest: run each scenario with known addresses, usernames and tokens, then search every row and every captured log line for them. |
 | AR-14 | Every route of the demo app declares a Pydantic response model, and every route except `/health`, `/ready`, `/auth/login`, `/auth/refresh`, the OpenAPI docs and the demo-mode routes requires authentication. | SPEC › Demo app API contract | Pytest: iterate `app.routes`; assert `response_model` is a `BaseModel` (or a list of one) and that the dependency tree has an auth dependency unless the path is in the public list. |
 | AR-15 | The middleware never reads the request body. | README › Architecture ("parse response bodies, which is fragile"); `middleware.py` docstring | Pytest: wrap `receive` with a spy, send requests through the middleware to an app that does not read the body, and assert no `http.request` message was consumed. |
+| AR-16 | `time.time`, `time.monotonic`, `datetime.datetime.now` and `datetime.datetime.utcnow` are called only in `sentinelapi/clock.py`; every other module receives a `Clock`. | Proposed rule, adopted 2026-10-22; ADR-0002 | Ruff `flake8-tidy-imports.banned-api`, with a per-file exception for `sentinelapi/clock.py` and the tests. |
+| AR-17 | No public method of a detector takes a framework object: detectors receive domain types and plain values. | Proposed rule, adopted 2026-10-22; ADR-0001; ADR-0004 | Pytest: iterate the public methods of every class in `sentinelapi.detectors` and assert no parameter annotation comes from `starlette` or `fastapi`. |
+| AR-18 | Inside `sentinelapi` and `examples`, only `sentinelapi/integration.py` constructs backends and detectors. | Proposed rule, adopted 2026-10-22; ADR-0007 | Pytest: `ast` walk for calls to every backend and detector class outside that module. |
 
 ## Promises that are not verifiable as written
 
@@ -37,15 +40,15 @@ They come from the README and the docstrings. They are not rules until they are 
 | "Thread-/task-safe" (`InMemoryBackend`) | `asyncio.Lock` serializes tasks of one event loop, not threads. | Say "safe across the tasks of one event loop" (SEN-16); AR-07's concurrency case checks it. |
 | "Every blocking decision written to a queryable audit trail" | The middleware writes every event, blocking or not; brute-force events are written only because the demo's login calls `persist_event` itself. | From SEN-22 the installer wires one audit sink for every detector; from SEN-25 every verdict is counted, identical ones folded into one row. AR-13 and SEN-25's tests check what is written. |
 
-## Proposed rules (not in the specification; they need your decision)
+## Why AR-16 to AR-18
 
-| Proposal | Why | State today |
+| Rule | Why | State on 2026-10-22 |
 | --- | --- | --- |
-| An injected clock: `time.time`, `time.monotonic` and `datetime.now` only inside `sentinelapi/clock.py` (Ruff `banned-api`, as in Willay). | Window, expiry and replay tests become exact instead of sleeping or patching modules; the audit's probes had to patch `time.monotonic`. | 4 places: `domain/entities.py` and `detectors/jwt_replay.py` (`time.time`), `storage/memory_backend.py` (`time.monotonic`), `audit/models.py` (`datetime.utcnow`). |
-| Detectors receive identity, never a framework request. | Keeps the detectors usable from any framework, and the proxy logic (SEN-19) in one place. | Holds today: detectors receive a `RequestFingerprint`. Making it a rule costs one more `ast` check. |
-| One composition point: only `integration.py` and the demo construct backends and detectors. | Integrators cannot wire a detector to a different backend by mistake. | No installer yet (SEN-22); the demo wires everything in `main.py`. |
+| AR-16, an injected clock (as in Willay) | Window, expiry and replay tests become exact instead of sleeping or patching modules; the audit's probes had to patch `time.monotonic`. | 4 places: `domain/entities.py` and `detectors/jwt_replay.py` (`time.time`), `storage/memory_backend.py` (`time.monotonic`), `audit/models.py` (`datetime.utcnow`). |
+| AR-17, detectors receive identity | Keeps the detectors usable from any framework, and the proxy logic (SEN-19) in one place. | Holds: detectors receive a `RequestFingerprint`. |
+| AR-18, one composition point | Integrators cannot wire a detector to a different backend by mistake. | No installer yet (SEN-22); the demo wires everything in `main.py`. |
 
-## Proposed tool (waiting for your confirmation)
+## Tool (confirmed on 2026-10-22)
 
 **import-linter + Pytest architecture tests + Alembic**, all run in CI (SEN-14), as proposed for VeriLedger:
 
@@ -57,7 +60,7 @@ They come from the README and the docstrings. They are not rules until they are 
 
 Alternatives considered: only Pytest with `ast` (no new dependency, but transitive imports would need to be reimplemented), and PyTestArch (less used and slower). Neither checks more than the proposal.
 
-## Which test covers which rule (after confirmation)
+## Which test covers which rule
 
 | Test | Rules |
 | --- | --- |
@@ -72,5 +75,8 @@ Alternatives considered: only Pytest with `ast` (no new dependency, but transiti
 | `tests/integration/test_audit_privacy.py` | AR-13 |
 | `tests/architecture/test_demo_routes.py` | AR-14 |
 | `tests/architecture/test_middleware_body.py` | AR-15 |
+| `pyproject.toml` › `[tool.ruff.lint.flake8-tidy-imports.banned-api]` | AR-16 |
+| `tests/architecture/test_detectors.py` | AR-17 |
+| `tests/architecture/test_composition.py` | AR-18 |
 
-**Rules that will fail on the first run, on their own.** AR-07 (the memory backend's window), AR-10, AR-11, AR-12, AR-13 and AR-14. AR-06 fails today (greenlet) but passes once SEN-11, which comes first in Sprint 1, is merged. SEN-15 lands the tests with those rules marked `xfail` and the story that fixes each, so CI is green and the debt is visible; removing an `xfail` is part of the fixing story's DoD.
+**Rules that will fail on the first run, on their own.** AR-07 (the memory backend's window), AR-10, AR-11, AR-12, AR-13, AR-14, AR-16 and AR-18. AR-06 fails today (greenlet) but passes once SEN-11, which comes first in Sprint 1, is merged. SEN-15 lands the tests with those rules marked `xfail` and the story that fixes each, so CI is green and the debt is visible; removing an `xfail` is part of the fixing story's DoD.

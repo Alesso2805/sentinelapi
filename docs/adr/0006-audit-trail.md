@@ -1,6 +1,6 @@
 # ADR-0006: The audit trail: its own migrations, keyed hashes instead of personal data, writes off the request path
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** SPEC.md › Data model; ARCHITECTURE_RULES.md AR-11 to AR-13; AUDIT.md probes 8 and 10; SEN-23 to SEN-26
 
@@ -35,7 +35,7 @@ The table also lives in someone else's database, next to their own migrations.
 2. One fire-and-forget task per event. Unbounded under an attack.
 3. **A bounded queue drained by one background writer in batches,** folding identical events into one row with a count.
 
-## Decision (proposed)
+## Decision
 
 Option 3, option 4 and option 3:
 

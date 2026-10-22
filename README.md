@@ -10,7 +10,7 @@
 [![Pytest](https://img.shields.io/badge/tested%20with-pytest-0A9EDC?logo=pytest&logoColor=white)](https://docs.pytest.org/en/stable/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Status: before 1.0.0, not ready for production.** Each detector works in its main scenario, but an audit on 2026-10-22 found a way around each of them. They are listed under [Known limitations](#known-limitations) and are being fixed in the open, one story at a time, on the way to 1.0.0: see the [backlog](docs/BACKLOG.md).
+> **Status: before 1.0.0, not ready for production yet.** An audit on 2026-10-22 found a way around each detector and gaps in the audit trail; all of them are fixed, each with the test that reproduces it (see [Known limitations](#known-limitations)). What remains before 1.0.0 is production readiness (settings that refuse unsafe values, a reproducible image) and a public demo: see the [backlog](docs/BACKLOG.md).
 
 ## Why this exists
 
@@ -112,8 +112,10 @@ curl -X POST localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"alice@example.com","password":"wrong"}'
 
-# See what SentinelAPI has caught
-curl localhost:8000/security/events
+# See what SentinelAPI has caught: operators only, with SENTINEL_OPERATOR_TOKEN
+# (start the demo with SENTINEL_OPERATOR_TOKEN=dev-operator-token to try this;
+# docker compose sets it for you)
+curl -H "Authorization: Bearer dev-operator-token" "localhost:8000/security/events?threat_level=high"
 ```
 
 ## Testing
@@ -154,19 +156,22 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 
 ## Known limitations
 
-Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
+None known. The audit of 2026-10-22 found 15 ways around the detectors and gaps in the audit trail; each became a story in the [backlog](docs/BACKLOG.md), and each fix landed with the test that reproduces it, between #10 and #19:
 
-- **The demo's `/security/events` needs no credentials** (SEN-26).
+- a client under its limit blocked by the in-memory backend; rotating the User-Agent; sharing a proxy's address; blocking only past twice the limit;
+- a brute-force block that let the right password in; usernames counted as typed; the owner's login erasing an attack;
+- tokens without `exp` forgotten after an hour;
+- raw addresses and usernames in the audit trail, readable by anyone; one row per request, written inside it; a table created at startup.
 
 ## Roadmap
 
-Planned in [docs/BACKLOG.md](docs/BACKLOG.md), in two-week sprints:
+Planned in [docs/BACKLOG.md](docs/BACKLOG.md):
 
-1. A locked, linted and type-checked repository, with CI on every pull request.
-2. Detectors without the evasions above.
-3. A three-line integration, and an audit trail that is migrated, private and safe under a flood.
-4. A production-ready stack, webhook alerts on CRITICAL events, and an attack console where you launch each attack and watch it get caught.
-5. A deployed demo and release 1.0.0.
+1. Done: a locked, linted and type-checked repository, with CI on every pull request.
+2. Done: detectors without the evasions above.
+3. Done: a three-line integration, and an audit trail that is migrated, private and safe under a flood.
+4. Next: a production-ready stack, webhook alerts on CRITICAL events, and an attack console where you launch each attack and watch it get caught.
+5. Then: a deployed demo and release 1.0.0.
 
 ## Documentation
 

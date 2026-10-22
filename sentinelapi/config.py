@@ -70,6 +70,9 @@ class SentinelSettings(BaseSettings):
     # your refresh/redeem endpoints — see jwt_replay.py for why)
     jwt_replay_paths: tuple[str, ...] = ("/auth/refresh",)
 
+    # The bearer token of the demo's events API (SEN-26). Unset: nobody reads the events
+    operator_token: str | None = None
+
     # If True, HIGH/CRITICAL events return 429/403 instead of just logging
     enforce: bool = True
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import typing
 
-import pytest
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 from fastapi.security.base import SecurityBase
@@ -37,12 +36,10 @@ def _is_public(path: str) -> bool:
     return path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES)
 
 
-@pytest.mark.xfail(strict=True, reason="SEN-26: /me, /health and /security/events return plain dicts")
 def test_every_route_declares_a_response_model() -> None:
     assert [r.path for r in api_routes() if not _is_model(r.response_model)] == []
 
 
-@pytest.mark.xfail(strict=True, reason="SEN-26: /security/events is public")
 def test_every_private_route_requires_authentication() -> None:
     unprotected = [r.path for r in api_routes() if not _is_public(r.path) and not _requires_auth(r.dependant)]
     assert unprotected == []

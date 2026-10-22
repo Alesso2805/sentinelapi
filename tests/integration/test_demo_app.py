@@ -12,7 +12,7 @@ from pathlib import Path
 import jwt
 from httpx import AsyncClient
 
-from .conftest import ClientFactory
+from .conftest import OPERATOR, ClientFactory
 
 ALICE = {"username": "alice@example.com", "password": "correct-horse-battery-staple"}
 
@@ -93,10 +93,13 @@ async def test_apps_do_not_share_counters(make_client: ClientFactory) -> None:
 async def test_shadow_mode_records_events_but_never_blocks(make_client: ClientFactory) -> None:
     async with make_client(enforce=False) as client:
         statuses = {(await client.get("/api/widgets")).status_code for _ in range(125)}
-        events = (await client.get("/security/events")).json()
+        page = (await client.get("/security/events", headers=OPERATOR)).json()
 
     assert statuses == {404}
-    assert {(e["threat_type"], e["threat_level"]) for e in events} == {("rate_limit_exceeded", "high")}
+    assert {(e["threat_type"], e["threat_level"]) for e in page["items"]} == {
+        ("rate_limit_exceeded", "high"),
+        ("rate_limit_exceeded", "medium"),
+    }
 
 
 async def test_blocking_events_reach_the_audit_trail(client: AsyncClient, tmp_path: Path) -> None:
@@ -105,9 +108,9 @@ async def test_blocking_events_reach_the_audit_trail(client: AsyncClient, tmp_pa
     await client.post("/auth/refresh", headers=headers)
     await client.post("/auth/refresh", headers=headers)
 
-    events = (await client.get("/security/events")).json()
+    page = (await client.get("/security/events", headers=OPERATOR)).json()
 
-    assert [(e["threat_type"], e["threat_level"], e["path"]) for e in events] == [
+    assert [(e["threat_type"], e["threat_level"], e["path"]) for e in page["items"]] == [
         ("jwt_replay", "critical", "/auth/refresh")
     ]
     assert (tmp_path / "audit.db").exists()

@@ -1,6 +1,6 @@
 # Sprint 3 — A three-line integration and an audit trail that is migrated, private and flood-proof (SEN-22 to SEN-26)
 
-**Status as of 2026-10-22:** started right after Sprint 2, with no calendar. 18 points.
+**Status as of 2026-10-22:** closed. Started right after Sprint 2 and finished the same day: all five stories (18 points) merged with green CI, #15 to #19. The README's Known limitations section is empty: everything the audit found is fixed and tested. Four strict xfails turned green and were removed in their own PRs (AR-18 in #15, AR-11 and AR-12 in #16, AR-13 in #17, AR-14 in #19); only SEN-27's remain.
 
 **Order:** SEN-22 (the installer is where the audit sink plugs in), SEN-23, SEN-24, SEN-25, SEN-26.
 
@@ -12,18 +12,23 @@
 | SEN-23 | #16 | `sentinelapi/audit/migrations/`: an Alembic history with its own version table (`sentinel_alembic_version`), run on an async connection by `sentinelapi.audit.migrate` and by the new `sentinel migrate` command. Revision 0001 creates the table with timestamptz columns, CHECKs on type and level and its indexes; `--app-role` (or `SENTINEL_AUDIT_APP_ROLE`) grants that Postgres role INSERT and SELECT only. No `create_all`: a sink on an unmigrated database logs `audit_table_not_migrated`. `UTCDateTime` keeps times aware on SQLite. Postgres joins CI. Compose migrates before starting the API (its own service in SEN-29). AR-16's last exception is gone | On SQLite and Postgres: upgrade, `alembic check` clean, downgrade to base and up again, an unknown threat type refused by the database; on Postgres the app role can INSERT and SELECT but UPDATE and DELETE get "permission denied" (AR-11 and AR-12, their placeholders replaced). The wheel ships the migrations and the `sentinel` script; the Compose stack migrated and stored timestamptz events. The 75 `utcnow` warnings are gone. 146 passed, 6 xfailed |
 | SEN-24 | #17 | `sentinelapi/privacy.py`: an HMAC-SHA256 `Pseudonymizer` under `SENTINEL_AUDIT_HASH_KEY` (a random key per process, with a warning, when unset). The audit row stores it for the fingerprint, the address (`client_hash`) and the account (`subject_hash`, from a new `SecurityEvent.subject`: the brute-force account's opaque id, never the username); the security log carries the same hashes. Migration 0002 drops `ip` and `user_id`. `detail` no longer quotes tokens (exception names and missing-claim names only) nor `jti`s. `sentinel purge` deletes rows past `SENTINEL_AUDIT_RETENTION_DAYS`, as the owner | AR-13 holds, so its strict xfail is gone: after ten failures and a login, rows and captured log lines contain no username, address or token. Keyed hashes are deterministic, differ by key and are not a plain SHA-256; `purge` deletes 91-day-old rows and keeps 89-day-old ones; migrations still reverse cleanly and match the models on SQLite and Postgres. 154 passed, 5 xfailed |
 | SEN-25 | #18 | `DatabaseAuditSink` no longer writes in the request: events are folded into groups (fingerprint, account, type, level, path) for `SENTINEL_AUDIT_AGGREGATE_SECONDS`, and a background task writes the closed ones once a second in one transaction. A failed write keeps the groups for the next attempt; past `SENTINEL_AUDIT_QUEUE_SIZE`, events are dropped and `audit_events_dropped` logged; shutdown drains everything. Migration 0003 adds `count` (CHECK ≥ 1) and `last_occurred_at`. The demo's events view flushes before reading | Probe 10 is a test: a burst of 125 requests writes 2 rows (65 HIGH, 1 MEDIUM) instead of 67; 1,000 identical events are one row with count 1,000; a group is written only once its window closes; with no table the caller notices nothing, the failure is logged once and the group is written after migrating; a bound of 3 drops 2 and logs it; with the database unreachable, the 61st request still gets its 429. 160 passed, 5 xfailed |
-| SEN-26 | — | — | — |
+| SEN-26 | #19 | `GET /security/events` requires `Authorization: Bearer <SENTINEL_OPERATOR_TOKEN>` (compared in constant time; unset, nobody reads); filters `threat_type`, `threat_level`, `since`; `offset` and `limit` (≤ 100); `{total, items}` with every level, each row's `count` and its keyed hashes. `SecurityEventRepository.search` and `DatabaseAuditSink.search` do the query in the library. Response models on `/me`, `/health` and the events | AR-14 holds, so both of its strict xfails are gone. No token, a wrong one, or an unset operator token: refused; filters, a real `total`, pages past the end and `limit=101` (422) tested; no address in any item. 166 passed, 3 xfailed |
 
 ## Sprint decisions
 
-—
+- **The login guard raises the 429 itself** (a Starlette `HTTPException` with `Retry-After`), so an integrator writes one line per call instead of mapping verdicts to responses.
+- **Migrations are written by hand** and run on an async connection; SentinelAPI's history keeps its own version table. `UTCDateTime` keeps times aware on SQLite, which drops the zone.
+- **The fingerprint is hashed with the key too,** not only the address and the account: an unkeyed SHA-256 of an address and a common User-Agent can be found by trying them.
+- **Events carry an opaque account id** (`SecurityEvent.subject`, the brute-force key's hash), so the audit trail can correlate attacks on one account without the username ever leaving the detector.
+- **The aggregation key includes the account,** so two attacks on two accounts from one source stay two rows; a failed write is retried within the bound rather than dropped at once.
+- **The demo's events view flushes before reading,** so a demo shows what just happened; an integrator reading the table sees rows once their window closes.
 
 ## Changes to the specification in this sprint
 
-—
+- #15 to #19: the architecture's module table and request flow, the data model (every column with what it was), the write path, the configuration table and the demo's API describe what is built.
 
 ## Retro
 
-- **Went well:** —
-- **To improve:** —
-- **To try:** —
+- **Went well:** strict xfails did their job: each one turned into a failing CI the moment its story made it pass, so no rule stayed marked as debt after it was paid.
+- **To improve:** two test assumptions were wrong and the code was right: identical events in one window became one row (the purge test), and one client's limit covered both the attacker and the operator (the events tests). Tests have to model the system's own rules, not the old ones.
+- **To try:** in Sprint 4, run the Compose stack and the image in CI (SEN-28, SEN-29), so the migrations and the container are tested on every PR instead of by hand.

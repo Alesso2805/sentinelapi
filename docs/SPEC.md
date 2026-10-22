@@ -58,7 +58,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Integration | One-call installer | `install_sentinel(app, settings, on_event=...)` builds and wires everything and returns a `Sentinel` whose `login_guard` the login calls; pure ASGI middleware | Built (SEN-22, ADR-0007) |
 | Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
 | Demo | Demo app | Login, refresh, `/me`, `/health`, events | Built (SEN-08) |
-| Demo | Attack console | A page where a visitor runs each attack and watches the verdicts | Planned (SEN-32, ADR-0010) |
+| Demo | Attack console | At `/` with `SENTINEL_DEMO_MODE=true`: three attacks (a burst, credential stuffing from 20 addresses, a refresh-token replay) run server-side against a sandbox of the real detectors, each request's verdict shown and the audit events streamed live to that visitor only | Built (SEN-32, ADR-0010) |
 | Operations | Compose stack | `docker compose up --build`: a `migrate` service runs as the table's owner and exits, then the API starts and connects as `sentinel_app`, which can only add and read audit rows; Redis 7.4 and Postgres 16.11 publish no ports. The API image is multi-stage and pinned, installs exactly `uv.lock`, runs as a non-root user and reports its health | Built (SEN-08, SEN-11, SEN-28, SEN-29) |
 | Operations | Deployment | `deploy/docker-compose.prod.yml`: production settings and secrets from `.env`, Caddy as the only published service, the API trusting only the stack's own network | Overlay built and rehearsed (SEN-29); the server itself is SEN-33 (ADR-0009) |
 | Distribution | Package | Typed wheel on PyPI | Planned (SEN-36, ADR-0008) |
@@ -217,7 +217,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Groups waiting to be written (past it, new ones are dropped and the drop logged); the window in which identical events become one row | Built (SEN-25) |
 | `SENTINEL_OPERATOR_TOKEN` | none: nobody reads the events | Bearer token of the demo's events API | Built (SEN-26) |
 | `SENTINEL_ALERT_WEBHOOK_URL` | empty | CRITICAL alerts | Planned (SEN-31) |
-| `SENTINEL_DEMO_MODE` | `false` | Turns on the attack console | Planned (SEN-32) |
+| `SENTINEL_DEMO_MODE` | `false` | Turns on the attack console; off, its routes do not exist | Built (SEN-32) |
 
 ## Demo app API contract
 
@@ -231,8 +231,9 @@ The demo app is not part of the library; it is how a visitor and the tests see t
 | POST | `/auth/refresh` | Bearer refresh token | New pair; a replayed token is stopped by the middleware with 403 |
 | GET | `/me` | Bearer access token | `Me {user}` |
 | GET | `/security/events` | Bearer `SENTINEL_OPERATOR_TOKEN` (public until SEN-26) | `EventPage {total, items}`, newest first; filters `threat_type`, `threat_level`, `since`; `offset`, `limit` ≤ 100. Every level, each row with its `count` and keyed hashes |
-| POST | `/demo/scenarios/{name}` | Public, only with `SENTINEL_DEMO_MODE` | Runs `burst`, `stuffing` or `replay` server-side with synthetic sources. Planned (SEN-32) |
-| GET | `/demo/events` | Public, only with `SENTINEL_DEMO_MODE` | Server-sent events with the visitor's own verdicts. Planned (SEN-32) |
+| GET | `/` | Public, only with `SENTINEL_DEMO_MODE` | The console page, with a strict Content Security Policy; sets the console's session cookie (HttpOnly, SameSite=Strict). Built (SEN-32) |
+| POST | `/demo/scenarios/{name}` | The console's session cookie, only with `SENTINEL_DEMO_MODE` | `ScenarioResult {scenario, title, summary, steps}` for `burst`, `stuffing` or `replay`, run server-side with synthetic sources (RFC 5737) on a fresh sandbox; 10 per hour per address, then 429 with `Retry-After`. Built (SEN-32) |
+| GET | `/demo/events` | The console's session cookie, only with `SENTINEL_DEMO_MODE` | Server-sent events with the visitor's own runs' events, a keep-alive every 15 s. Built (SEN-32) |
 
 The demo user is `alice@example.com` with the password `correct-horse-battery-staple`. It is public on purpose and exists only in the demo app.
 
@@ -306,7 +307,7 @@ sentinelapi/
 │   ├── config.py
 │   ├── logging_config.py
 │   └── py.typed
-├── examples/demo_app/            # + attack console (SEN-32)
+├── examples/demo_app/            # the demo; console.py and static/ are the attack console
 ├── tests/
 │   ├── unit/
 │   ├── contract/                 # every CounterBackend (AR-07)

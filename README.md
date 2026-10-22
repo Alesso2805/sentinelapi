@@ -85,7 +85,7 @@ docker compose up --build --wait    # or: make up
 curl http://localhost:8000/health
 ```
 
-A `migrate` service creates the audit table as its owner and exits; the API starts after it and connects as a role that can only add and read audit rows. Only the API's port is published. `docker compose run --rm migrate sentinel purge` applies the retention period. `/ready` answers 503 until Redis and the migrated database answer; every response carries an `X-Request-ID`, which every log line of that request carries too, in JSON in production. On a server, `deploy/docker-compose.prod.yml` adds production settings, requires the secrets in `.env` and puts Caddy in front with HTTPS.
+Then open http://localhost:8000/ for the **attack console**: launch a burst, credential stuffing from 20 addresses or a token replay, and watch every request get its verdict while the audit events stream in. A `migrate` service creates the audit table as its owner and exits; the API starts after it and connects as a role that can only add and read audit rows. Only the API's port is published. `docker compose run --rm migrate sentinel purge` applies the retention period. `/ready` answers 503 until Redis and the migrated database answer; every response carries an `X-Request-ID`, which every log line of that request carries too, in JSON in production. On a server, `deploy/docker-compose.prod.yml` adds production settings, requires the secrets in `.env` and puts Caddy in front with HTTPS.
 
 ### Local dev (in-memory backend + SQLite, zero external services)
 
@@ -173,7 +173,7 @@ Planned in [docs/BACKLOG.md](docs/BACKLOG.md):
 1. Done: a locked, linted and type-checked repository, with CI on every pull request.
 2. Done: detectors without the evasions above.
 3. Done: a three-line integration, and an audit trail that is migrated, private and safe under a flood.
-4. Next: a production-ready stack, webhook alerts on CRITICAL events, and an attack console where you launch each attack and watch it get caught.
+4. Done: a production-ready stack (safe settings, a reproducible image, one command, readiness and request ids) and the attack console. Next: webhook alerts on CRITICAL events.
 5. Then: a deployed demo and release 1.0.0.
 
 ## Documentation

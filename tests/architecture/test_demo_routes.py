@@ -11,13 +11,16 @@ from fastapi.security.base import SecurityBase
 from pydantic import BaseModel
 
 from examples.demo_app.main import create_app
+from sentinelapi.config import SentinelSettings
 
 PUBLIC_PATHS = {"/health", "/ready", "/auth/login", "/auth/refresh"}
 PUBLIC_PREFIXES = ("/demo/",)
 
 
 def api_routes() -> list[APIRoute]:
-    routes = [r for r in create_app().routes if isinstance(r, APIRoute)]
+    # With the console's routes too: demo mode adds them (SEN-32).
+    app = create_app(SentinelSettings(_env_file=None, demo_mode=True))
+    routes = [r for r in app.routes if isinstance(r, APIRoute)]
     assert routes
     return routes
 

@@ -17,7 +17,7 @@ import asyncio
 import math
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, NamedTuple
 
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
@@ -91,33 +91,8 @@ class Sentinel:
         self.settings = settings
         self.backend = _backend(settings, clock)
         self.client_resolver = ClientResolver(settings.trusted_proxies)
-        self.rate_limiter = RateLimiter(
-            self.backend,
-            max_requests=settings.rate_limit_max_requests,
-            window_seconds=settings.rate_limit_window_seconds,
-            warn_at=settings.rate_limit_warn_at,
-            path_limits=settings.rate_limit_paths,
-            exempt_paths=settings.rate_limit_exempt_paths,
-            clock=clock,
-        )
-        self.brute_force = BruteForceDetector(
-            self.backend,
-            window_seconds=settings.brute_force_window_seconds,
-            per_source_medium=settings.brute_force_per_source_medium,
-            per_source_high=settings.brute_force_per_source_high,
-            per_username_high=settings.brute_force_per_username_high,
-            per_username_critical=settings.brute_force_per_username_critical,
-            account_action=AccountAction(settings.brute_force_account_action),
-            clock=clock,
-        )
-        self.jwt_replay = JWTReplayDetector(
-            self.backend,
-            secret=settings.jwt_secret,
-            algorithms=settings.jwt_algorithms,
-            audience=settings.jwt_audience,
-            issuer=settings.jwt_issuer,
-            clock=clock,
-        )
+        self.rate_limiter, self.brute_force, self.jwt_replay = _detectors(settings, self.backend, clock)
+        self._clock = clock
         self.pseudonymize = Pseudonymizer(settings.audit_hash_key)
         self.audit = (
             DatabaseAuditSink(
@@ -132,6 +107,12 @@ class Sentinel:
         )
         self.login_guard = LoginGuard(self)
         self._on_event = on_event
+
+    def sandbox(self) -> Sandbox:
+        """Fresh detectors with this app's settings, on a memory backend of
+        their own: for demonstrations that must not touch real clients'
+        counters and must start the same way every time (ADR-0010)."""
+        return Sandbox(*_detectors(self.settings, InMemoryBackend(clock=self._clock), self._clock))
 
     async def report(self, event: SecurityEvent) -> None:
         """Every event: the log line first, then the audit table, then the
@@ -205,6 +186,43 @@ def install_sentinel(
     app.router.lifespan_context = lifespan
     app.state.sentinel = sentinel
     return sentinel
+
+
+class Sandbox(NamedTuple):
+    rate_limiter: RateLimiter
+    brute_force: BruteForceDetector
+    jwt_replay: JWTReplayDetector
+
+
+def _detectors(settings: SentinelSettings, backend: CounterBackend, clock: Clock) -> Sandbox:
+    rate_limiter = RateLimiter(
+        backend,
+        max_requests=settings.rate_limit_max_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+        warn_at=settings.rate_limit_warn_at,
+        path_limits=settings.rate_limit_paths,
+        exempt_paths=settings.rate_limit_exempt_paths,
+        clock=clock,
+    )
+    brute_force = BruteForceDetector(
+        backend,
+        window_seconds=settings.brute_force_window_seconds,
+        per_source_medium=settings.brute_force_per_source_medium,
+        per_source_high=settings.brute_force_per_source_high,
+        per_username_high=settings.brute_force_per_username_high,
+        per_username_critical=settings.brute_force_per_username_critical,
+        account_action=AccountAction(settings.brute_force_account_action),
+        clock=clock,
+    )
+    jwt_replay = JWTReplayDetector(
+        backend,
+        secret=settings.jwt_secret,
+        algorithms=settings.jwt_algorithms,
+        audience=settings.jwt_audience,
+        issuer=settings.jwt_issuer,
+        clock=clock,
+    )
+    return Sandbox(rate_limiter, brute_force, jwt_replay)
 
 
 def _backend(settings: SentinelSettings, clock: Clock) -> CounterBackend:

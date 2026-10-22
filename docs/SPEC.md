@@ -56,7 +56,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Audit | Event log | Table `sentinel_security_events`, created by the package's own migrations (`sentinel migrate`), with keyed hashes instead of addresses and accounts, written off the request path with identical events folded into one row, purged by `sentinel purge`; the demo's `GET /security/events`, for operators only, with filters and pages | Built (SEN-06, SEN-23 to SEN-26) |
 | Enforcement | Shadow mode | `SENTINEL_ENFORCE=false` logs and records without blocking | Built (SEN-07), untested until SEN-13 |
 | Integration | One-call installer | `install_sentinel(app, settings, on_event=...)` builds and wires everything and returns a `Sentinel` whose `login_guard` the login calls; pure ASGI middleware | Built (SEN-22, ADR-0007) |
-| Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
+| Alerts | Webhook on CRITICAL events | Slack-compatible JSON to `SENTINEL_ALERT_WEBHOOK_URL`, sent by a background task, at most one per source and threat every 10 minutes, retried three times with backoff; the source named by its keyed hash | Built (SEN-31) |
 | Demo | Demo app | Login, refresh, `/me`, `/health`, events | Built (SEN-08) |
 | Demo | Attack console | At `/` with `SENTINEL_DEMO_MODE=true`: three attacks (a burst, credential stuffing from 20 addresses, a refresh-token replay) run server-side against a sandbox of the real detectors, each request's verdict shown and the audit events streamed live to that visitor only | Built (SEN-32, ADR-0010) |
 | Operations | Compose stack | `docker compose up --build`: a `migrate` service runs as the table's owner and exits, then the API starts and connects as `sentinel_app`, which can only add and read audit rows; Redis 7.4 and Postgres 16.11 publish no ports. The API image is multi-stage and pinned, installs exactly `uv.lock`, runs as a non-root user and reports its health | Built (SEN-08, SEN-11, SEN-28, SEN-29) |
@@ -216,7 +216,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_AUDIT_RETENTION_DAYS` | `90` | What `sentinel purge` keeps | Built (SEN-24) |
 | `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Groups waiting to be written (past it, new ones are dropped and the drop logged); the window in which identical events become one row | Built (SEN-25) |
 | `SENTINEL_OPERATOR_TOKEN` | none: nobody reads the events | Bearer token of the demo's events API | Built (SEN-26) |
-| `SENTINEL_ALERT_WEBHOOK_URL` | empty | CRITICAL alerts | Planned (SEN-31) |
+| `SENTINEL_ALERT_WEBHOOK_URL` | empty | Where CRITICAL events are announced; empty, no alerts | Built (SEN-31) |
 | `SENTINEL_DEMO_MODE` | `false` | Turns on the attack console; off, its routes do not exist | Built (SEN-32) |
 
 ## Demo app API contract
@@ -298,7 +298,7 @@ sentinelapi/
 │   ├── storage/                  # CounterBackend and its implementations
 │   ├── audit/
 │   │   └── migrations/           # Alembic history for the audit table, its own version table
-│   ├── alerts/                   # webhook on CRITICAL events (SEN-31)
+│   ├── alerts/                   # the webhook for CRITICAL events
 │   ├── client_address.py         # trusted proxies (SEN-19)
 │   ├── integration.py            # install_sentinel, Sentinel, LoginGuard
 │   ├── cli.py                    # the `sentinel` command: migrate and purge

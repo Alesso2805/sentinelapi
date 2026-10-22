@@ -23,6 +23,7 @@ from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+from sentinelapi.alerts.webhook import WebhookAlerter
 from sentinelapi.audit.sink import DatabaseAuditSink
 from sentinelapi.client_address import ClientResolver
 from sentinelapi.clock import SYSTEM_CLOCK, Clock
@@ -105,6 +106,11 @@ class Sentinel:
             if settings.audit
             else None
         )
+        self.alerts = (
+            WebhookAlerter(settings.alert_webhook_url, self.pseudonymize, clock=clock)
+            if settings.alert_webhook_url
+            else None
+        )
         self.login_guard = LoginGuard(self)
         self._on_event = on_event
 
@@ -115,11 +121,11 @@ class Sentinel:
         return Sandbox(*_detectors(self.settings, InMemoryBackend(clock=self._clock), self._clock))
 
     async def report(self, event: SecurityEvent) -> None:
-        """Every event: the log line first, then the audit table, then the
-        app's own `on_event`. A failing sink is logged and never stops the
-        others, nor the request."""
+        """Every event: the log line first, then the audit table, the webhook
+        for CRITICAL ones, and the app's own `on_event`. A failing sink is
+        logged and never stops the others, nor the request."""
         await log_event(event, self.pseudonymize)
-        sinks = [s for s in (self.audit, self._on_event) if s is not None]
+        sinks = [s for s in (self.audit, self.alerts, self._on_event) if s is not None]
         for sink in sinks:
             try:
                 await sink(event)
@@ -143,8 +149,12 @@ class Sentinel:
             )
         if self.audit is not None:
             await self.audit.start()
+        if self.alerts is not None:
+            self.alerts.start()
 
     async def close(self) -> None:
+        if self.alerts is not None:
+            await self.alerts.close()
         if self.audit is not None:
             await self.audit.close()
         close = getattr(self.backend, "close", None)

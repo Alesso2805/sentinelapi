@@ -1,6 +1,6 @@
 # ADR-0004: Identify clients by address, through trusted proxies
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** SPEC.md › Detection contract › Identity of a request; AUDIT.md probes 3 and 9; SEN-18, SEN-19; ADR-0009
 

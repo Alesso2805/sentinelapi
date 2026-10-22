@@ -1,17 +1,16 @@
 # Sprint 1 — Green from a clean clone, CI that blocks regressions (SEN-11 to SEN-16)
 
-**Status as of 2026-10-22:** planned for October 26 – November 8, 2026. 12 points. SEN-10 was done in Sprint 0, and SEN-11's first step is #1.
+**Status as of 2026-10-22:** started on 2026-10-22, with no calendar: it closes when its stories are merged. 12 points. SEN-10 was done in Sprint 0, and SEN-11's first step is #1.
 
 **Order:** SEN-11, SEN-12, SEN-13, SEN-14, SEN-15, SEN-16.
 
-**Pending decisions before it starts**
+**Decided before it started** (product owner, 2026-10-22)
 
-- **The calendar.** It assumes SentinelAPI runs alongside VeriLedger's Sprints 1 to 4. If SentinelAPI should wait for VeriLedger's 1.0.0, every date shifts as a block.
-- **The supported Python versions** (ADR-0008), for SEN-11 and SEN-14's matrix.
-- **The architecture-test tool** (ARCHITECTURE_RULES.md › Proposed tool), for SEN-15.
-- **The proposed rules** (an injected clock, among others), so that SEN-15 knows how many rules to test.
-
-**To prepare for Sprint 2:** ADR-0004 and ADR-0005 accepted or changed. SEN-19 and SEN-20 cannot start without them.
+- **No calendar:** as fast as the stories can be done; each PR is merged as soon as its CI is green.
+- **Python 3.11 to 3.15** (ADR-0008), for SEN-11 and SEN-14's matrix.
+- **import-linter + Pytest + Alembic** for the architecture tests (ARCHITECTURE_RULES.md › Tool), for SEN-15.
+- **AR-16 to AR-18 adopted** (an injected clock, detectors that receive identity, one composition point), so SEN-15 tests 18 rules.
+- **ADR-0004 to ADR-0010 accepted,** with `lock` as ADR-0005's default: nothing in Sprints 2 to 5 waits for a decision except the server (SEN-33) and the PyPI account (SEN-36).
 
 ## What was delivered
 

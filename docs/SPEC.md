@@ -88,7 +88,7 @@ One Python package, `sentinelapi`, that runs inside the integrator's process (AD
 | `config.py`, `logging_config.py` | `SentinelSettings`, structlog setup | pydantic-settings, structlog |
 | `examples/demo_app` | The demo FastAPI app | Everything; nothing in `sentinelapi` imports it |
 
-The rules above are written as verifiable statements AR-01 to AR-15 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md).
+The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md).
 
 **Request flow, as built.**
 
@@ -259,7 +259,7 @@ A security library that blocks legitimate users is worse than no library. Every 
 
 **Stack.** Python 3.12 for development and the image (the library's supported range is ADR-0008's decision), FastAPI and Starlette, Pydantic v2 and pydantic-settings, SQLAlchemy 2 async (asyncpg, aiosqlite), Alembic (SEN-23), PyJWT, redis-py's asyncio client, structlog, uv, Ruff, Mypy strict, Pytest with pytest-asyncio, httpx. PostgreSQL 16 and Redis 7 in the demo stack; SQLite only in tests and local development. Docker Compose; Caddy on the server (ADR-0009).
 
-**Architecture rules.** The module rules of the Architecture section, written as verifiable rules AR-01 to AR-15 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md), each with the test that checks it (SEN-15).
+**Architecture rules.** The module rules of the Architecture section, written as verifiable rules AR-01 to AR-18 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md), each with the test that checks it (SEN-15).
 
 **How we work**
 

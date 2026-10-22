@@ -1,6 +1,6 @@
 # ADR-0009: Deploy the demo on one server, behind Caddy, on one hostname
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** Willay's ADR-0010 and VeriLedger's ADR-0005 (the same decision); ADR-0004; SEN-29, SEN-33, SEN-34
 
@@ -14,7 +14,7 @@ The portfolio lists SentinelAPI without a demo link (work-portfolio README › P
 2. **Share VeriLedger's server:** one more Compose project, and one more site in its Caddy. No new server, but the two demos share a machine and an outage.
 3. **A server of its own,** set up as Willay's runbook describes.
 
-## Decision (proposed)
+## Decision
 
 Options 2 or 3, decided by the product owner when SEN-33 starts, with the same shape either way:
 

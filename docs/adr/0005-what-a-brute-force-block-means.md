@@ -1,6 +1,6 @@
 # ADR-0005: A brute-force block is checked before the password and holds until its window ends
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** ADR-0003; SPEC.md › Detection contract › Verdicts; AUDIT.md probes 4, 5 and 7; SEN-20
 
@@ -23,7 +23,7 @@ There are two axes, and a block means something different on each:
 3. **Lock the source; lock the account only for sources that never logged into it successfully** (a device seen on a recent success keeps working). The fairest, and the most state to keep.
 4. **Progressive delay** instead of a block. It slows a distributed attack little, since each source waits on its own.
 
-## Decision (proposed)
+## Decision
 
 - **Source axis:** a hard block. `BruteForceDetector.check(client, username)` runs **before** the password is verified; a blocked source gets 429 with `Retry-After` until its window ends, right password or not.
 - **Account axis:** a setting, `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION`:

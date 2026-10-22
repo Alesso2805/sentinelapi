@@ -1,6 +1,6 @@
 # ADR-0008: A typed library on PyPI; the demo stays out of the package
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** SPEC.md › Engineering rules; ARCHITECTURE_RULES.md AR-06; SEN-11, SEN-12, SEN-14, SEN-36
 
@@ -14,7 +14,7 @@ The README sells SentinelAPI as something to "drop into an existing app", but th
 2. **Publish to PyPI** from a tag, with trusted publishing (no token stored in the repository).
 3. **Vendor it into apps.** Not a library any more.
 
-## Decision (proposed)
+## Decision
 
 Option 2:
 
@@ -22,7 +22,7 @@ Option 2:
 - The wheel contains only the `sentinelapi` package, as `[tool.hatch.build.targets.wheel]` already says; the demo app is not shipped.
 - Extras stay `redis`, `postgres` and `sqlite`; `sqlalchemy[asyncio]` becomes a required dependency (SEN-11), since the audit sink needs it.
 - `py.typed` is shipped (SEN-12).
-- **Supported Python:** from 3.11, the version `StrEnum` needs, up to the newest stable CPython when SEN-14 lands, checked against the official release calendar at that moment. CI tests every supported version; development and the image use 3.12.
+- **Supported Python: 3.11 to 3.15.** On 2026-10-22 those are the CPython versions under support (3.15.0 came out on 2026-10-09; 3.10 reached its end of life on 2026-10-01). 3.11 is also the first with `StrEnum`. CI tests every one; development and the image use 3.12. A new CPython release is added, and one past its end of life dropped, in a minor version.
 - **SemVer.** 1.0.0 is the release of SEN-37; the settings, the installer and the event schema are the public API.
 
 ## Consequences

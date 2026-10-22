@@ -1,6 +1,6 @@
 # ADR-0010: The public demo is an attack console served by the demo app
 
-- **Status:** Proposed
+- **Status:** Accepted on 2026-10-22
 - **Date:** 2026-10-22
 - **Related:** README › Roadmap ("small React dashboard over /security/events"); ADR-0004; ADR-0009; SEN-32, SEN-41
 
@@ -16,7 +16,7 @@ The README's roadmap asks for a small React dashboard. The portfolio labels Sent
 2. **A page rendered by the demo app** (Jinja2 templates, HTMX, server-sent events). No build step; one image; stays Python.
 3. **No page:** Swagger UI and `curl` recipes in the README. Nothing for a visitor to see.
 
-## Decision (proposed)
+## Decision
 
 Option 2, an "attack console":
 

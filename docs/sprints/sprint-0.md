@@ -43,7 +43,7 @@ The suite on 2026-10-22: 21 tests (15 unit, 6 integration), all passing, with 90
 - **The final version** is 1.0.0: detectors with no known evasion, a deployed attack console and, if ADR-0008 is accepted, a package on PyPI. With the repository public, the portfolio can already link `repoUrl`; `demoUrl` waits for SEN-33.
 - **Public now** (product owner, 2026-10-22). SEN-10 and SEN-38 were brought forward from Sprints 1 and 5. The README says the project is before 1.0.0 and lists the audit's findings as known limitations, each with its story, so the repository claims nothing untrue while they are fixed. The audit itself stays local, as Willay's and VeriLedger's do.
 - **Accepted, retroactive:** ADR-0001 (framework-agnostic detectors), ADR-0002 (fixed windows), ADR-0003 (brute force called by the login).
-- **Proposed, waiting for the product owner:** ADR-0004 (client identity behind proxies) and ADR-0005 (what a block means), both needed for Sprint 2; ADR-0006 (audit trail) and ADR-0007 (pure ASGI and installer) for Sprint 3; ADR-0008 (PyPI and Python versions), ADR-0009 (deployment) and ADR-0010 (attack console).
+- **Proposed, then accepted by the product owner on 2026-10-22:** ADR-0004 (client identity behind proxies) and ADR-0005 (what a block means), both needed for Sprint 2; ADR-0006 (audit trail) and ADR-0007 (pure ASGI and installer) for Sprint 3; ADR-0008 (PyPI and Python versions), ADR-0009 (deployment) and ADR-0010 (attack console).
 
 ## Changes to the specification in this sprint
 

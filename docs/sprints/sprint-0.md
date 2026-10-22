@@ -1,18 +1,21 @@
 # Sprint 0 — Baseline as built, documented and audited (SEN-01 to SEN-09)
 
-**Status as of 2026-10-22:** SEN-01 to SEN-08 were built on August 31, 2026, before there was a backlog, in a sandbox without network access (the README says so). They are recorded here retroactively so that each one has acceptance criteria the audit can check. SEN-09 (this documentation) is in review. The sprint closes on October 25.
+**Status as of 2026-10-22:** SEN-01 to SEN-08 were built on August 31, 2026, before there was a backlog, in a sandbox without network access (the README says so). They are recorded here retroactively so that each one has acceptance criteria the audit can check. SEN-09 (this documentation), SEN-10 (version control) and SEN-38 (a public repository) were done on October 22. The sprint closes on October 25.
 
 ## Where the code stands
 
-**There is no repository.** The folder is not under git: no history, no remote, no branch. Every source file was last modified on 2026-08-31, between 22:54 and 23:12. The first story of Sprint 1 (SEN-10) puts the baseline in a first commit and this documentation in a second.
+Under git since 2026-10-22, at [github.com/Alesso2805/sentinelapi](https://github.com/Alesso2805/sentinelapi), public. Until then the folder had no history; every source file was last modified on 2026-08-31, between 22:54 and 23:12.
+
+- `6a643ce`: the baseline exactly as built, with a `.gitignore` that keeps the local and internal files out of the history.
+- `ef30ed3`: this documentation.
+- #1: SEN-11's first step, `sqlalchemy[asyncio]`, so the image and a fresh install start.
+- #2: SEN-38, what a public repository needs.
 
 To pick it up again:
 
-1. Activate the virtualenv (`.venv`, Python 3.12.10).
+1. `git clone https://github.com/Alesso2805/sentinelapi` and `pip install -e ".[dev,demo]"` (uv and a lockfile come with SEN-11).
 2. Run `pytest`: 21 tests pass. They write to `sentinelapi_audit.db` in the folder (SEN-13).
-3. `uvicorn examples.demo_app.main:app --reload` runs the demo with the memory backend and SQLite.
-
-`docker compose up` does not work (SEN-11).
+3. `uvicorn examples.demo_app.main:app --reload` runs the demo with the memory backend and SQLite, and `docker compose up --build` runs it with Redis and Postgres, as long as ports 8000, 6379 and 5432 are free (SEN-29 stops publishing the database ports).
 
 ## What was delivered
 
@@ -26,7 +29,9 @@ To pick it up again:
 | SEN-06 | `audit/`, `examples/demo_app/main.py` | Event table, repository, `GET /security/events` | Through the integration tests. Live on Postgres: raw addresses, usernames in `detail`, public endpoint, 67 rows from one burst |
 | SEN-07 | `middleware.py` | Shadow mode | No test |
 | SEN-08 | `examples/demo_app/`, `Dockerfile`, `docker-compose.yml` | Demo app and a three-service stack | The image builds; the API exits on import (greenlet) |
-| SEN-09 | `CLAUDE.md`, `docs/` | Specification, backlog, ten ADRs, architecture rules, audit, these notes | In review |
+| SEN-09 | `ef30ed3` | Specification, backlog, ten ADRs, architecture rules, audit, these notes | Done; the audit and `CLAUDE.md` stay local (SEN-38) |
+| SEN-10 | `6a643ce`, `ef30ed3` | The baseline and the documentation as the first two commits; a private repository on GitHub | No database, agent file or internal note in the history (`git log --all --name-only`) |
+| SEN-38 | #2 | MIT `LICENSE`, `SECURITY.md`, a README that states the status and the known limitations, internal notes out of version control; then public, with private vulnerability reporting, a description and topics | The repository's page and its settings, checked after the switch |
 
 The suite on 2026-10-22: 21 tests (15 unit, 6 integration), all passing, with 90 warnings.
 
@@ -35,7 +40,8 @@ The suite on 2026-10-22: 21 tests (15 unit, 6 integration), all passing, with 90
 - **Story prefix `SEN-`**, one backlog in this repository. The two-week sprint calendar is VeriLedger's, so the ceremonies of both projects can share a day.
 - **The audit drives the plan.** Every blocking or important finding of `docs/AUDIT.md` became a story in E1 to E5.
 - **Correctness before exposure.** Nothing is deployed before the detectors hold (E2) and the audit trail is private (SEN-24, SEN-26).
-- **The final version** is 1.0.0: a public repository, a deployed attack console and, if ADR-0008 is accepted, a package on PyPI. That is what the portfolio needs to link the project (`repoUrl` and `demoUrl`).
+- **The final version** is 1.0.0: detectors with no known evasion, a deployed attack console and, if ADR-0008 is accepted, a package on PyPI. With the repository public, the portfolio can already link `repoUrl`; `demoUrl` waits for SEN-33.
+- **Public now** (product owner, 2026-10-22). SEN-10 and SEN-38 were brought forward from Sprints 1 and 5. The README says the project is before 1.0.0 and lists the audit's findings as known limitations, each with its story, so the repository claims nothing untrue while they are fixed. The audit itself stays local, as Willay's and VeriLedger's do.
 - **Accepted, retroactive:** ADR-0001 (framework-agnostic detectors), ADR-0002 (fixed windows), ADR-0003 (brute force called by the login).
 - **Proposed, waiting for the product owner:** ADR-0004 (client identity behind proxies) and ADR-0005 (what a block means), both needed for Sprint 2; ADR-0006 (audit trail) and ADR-0007 (pure ASGI and installer) for Sprint 3; ADR-0008 (PyPI and Python versions), ADR-0009 (deployment) and ADR-0010 (attack console).
 

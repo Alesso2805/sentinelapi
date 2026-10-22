@@ -33,7 +33,7 @@ A demo app shows it working. It is a portfolio project, so the clarity of its gu
 
 | Metric | Target | How it is measured |
 | --- | --- | --- |
-| Known evasions that get through | 0 | One test per evasion of [AUDIT.md](AUDIT.md) › Detection probes (SEN-17 to SEN-21) |
+| Known evasions that get through | 0 | One test per evasion found by the audit of 2026-10-22, listed in the README's Known limitations (SEN-17 to SEN-21) |
 | Legitimate traffic blocked | 0 for a client under its limit, however long it keeps going | Steady-traffic test with a controlled clock, on every backend (SEN-17) |
 | Latency added per request | p95 ≤ 2 ms with Redis on the same host (proposed target) | Benchmark (SEN-35) |
 | Integration effort | Three lines in an existing FastAPI app | The README's snippet runs as a test (SEN-22) |
@@ -309,7 +309,7 @@ sentinelapi/
 │   ├── SPEC.md                   # this document
 │   ├── BACKLOG.md                # stories and sprint plan
 │   ├── ARCHITECTURE_RULES.md
-│   ├── AUDIT.md
+│   ├── AUDIT.md                  # local, not versioned (SEN-38)
 │   ├── openapi.json              # the demo app's contract (SEN-37)
 │   ├── adr/
 │   ├── runbooks/                 # SEN-34
@@ -321,11 +321,13 @@ sentinelapi/
 ├── pyproject.toml
 ├── uv.lock                       # SEN-11
 ├── CHANGELOG.md                  # SEN-37
-├── LICENSE                       # SEN-38
-├── SECURITY.md                   # SEN-38
-├── CLAUDE.md
+├── LICENSE
+├── SECURITY.md
+├── CLAUDE.md                     # local, not versioned (SEN-38)
 └── README.md
 ```
+
+Kept on each workstation and out of version control (SEN-38): `CLAUDE.md` and `.claude/`, the coding agent's instructions and settings; `graphify-out/`, its generated code graph; `docs/AUDIT.md` and `docs/COMMENTS_REVIEW.md`, internal working notes. The README's Known limitations sums up the audit's result.
 
 | Artifact | Purpose | When it is updated |
 | --- | --- | --- |
@@ -334,7 +336,7 @@ sentinelapi/
 | `docs/ARCHITECTURE_RULES.md` | Verifiable architecture rules and their tests | When a story changes the architecture |
 | `docs/adr/NNNN-*.md` | One technical decision: context, options, decision, consequences | Every non-trivial decision |
 | `docs/sprints/sprint-N.md` | What was delivered, decisions, spec changes, retro | At the close of each sprint |
-| `docs/AUDIT.md` | Independent comparison of the repository against these documents | Before a release, or when asked |
+| `docs/AUDIT.md` (local, SEN-38) | Independent comparison of the repository against these documents; the README sums up its result | Before a release, or when asked |
 | `CHANGELOG.md` | Visible changes per version (Keep a Changelog + SemVer) | Every release |
 
 **Conventions.** Branches `feat/SEN-NN-description`, `fix/…`, `chore/…`; Conventional Commits; PRs reference the story and include the DoD checklist; table and column names in English `snake_case`; code, comments and documentation in English.

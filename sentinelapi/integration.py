@@ -13,6 +13,7 @@ same sinks.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -144,6 +145,15 @@ class Sentinel:
             except Exception:
                 await security_logger.aexception("security_event_sink_failed", sink=type(sink).__name__)
 
+    async def ready(self) -> dict[str, bool]:
+        """What /ready reports: the counter backend answers, and the audit
+        database is reachable and migrated. Each check gets two seconds."""
+        checks = {"backend": _check(getattr(self.backend, "ping", None))}
+        if self.audit is not None:
+            checks["database"] = _check(self.audit.ready)
+        results = await asyncio.gather(*checks.values())
+        return dict(zip(checks, results, strict=True))
+
     async def start(self) -> None:
         if self.pseudonymize.ephemeral:
             await security_logger.awarning(
@@ -203,3 +213,12 @@ def _backend(settings: SentinelSettings, clock: Clock) -> CounterBackend:
 
         return RedisBackend(settings.redis_url)
     return InMemoryBackend(clock=clock)
+
+
+async def _check(probe: Callable[[], Awaitable[bool]] | None) -> bool:
+    if probe is None:
+        return True
+    try:
+        return await asyncio.wait_for(probe(), timeout=2)
+    except Exception:
+        return False

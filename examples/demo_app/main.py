@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Annotated, cast
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
@@ -36,6 +36,11 @@ _security = HTTPBearer()
 
 class Health(BaseModel):
     status: str
+
+
+class Readiness(BaseModel):
+    status: str
+    checks: dict[str, str]
 
 
 class Me(BaseModel):
@@ -83,6 +88,9 @@ def require_operator(
 def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     """Each call builds its own SentinelAPI, so tests can run against a
     fresh app with their own counters and their own database."""
+    settings = settings or SentinelSettings()
+    # JSON lines in production, for a log aggregator; readable ones on a laptop.
+    configure_logging(json_output=settings.env == "production")
     app = FastAPI(title="SentinelAPI demo")
     install_sentinel(app, settings)
     app.include_router(auth_router)
@@ -122,10 +130,21 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
 
     @app.get("/health", response_model=Health)
     async def health() -> Health:
+        """Liveness: the process answers. Never rate limited."""
         return Health(status="ok")
+
+    @app.get("/ready", response_model=Readiness, responses={503: {"model": Readiness}})
+    async def ready(sentinel: Annotated[Sentinel, Depends(get_sentinel)], response: Response) -> Readiness:
+        """Readiness: Redis answers and the audit database is reachable and migrated (SEN-30)."""
+        checks = await sentinel.ready()
+        if not all(checks.values()):
+            response.status_code = 503
+        return Readiness(
+            status="ready" if all(checks.values()) else "unavailable",
+            checks={name: "ok" if ok else "failing" for name, ok in checks.items()},
+        )
 
     return app
 
 
-configure_logging(json_output=False)  # pretty console output for the demo; True in prod
 app = create_app()

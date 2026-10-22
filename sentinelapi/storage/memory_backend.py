@@ -71,6 +71,9 @@ class InMemoryBackend:
             expiries = [entry[1] for entry in (self._counters.get(key), self._values.get(key)) if entry]
             return max([e - now for e in expiries if e > now], default=0.0)
 
+    async def ping(self) -> bool:
+        return True
+
     async def reset(self, key: str) -> None:
         async with self._lock:
             self._counters.pop(key, None)

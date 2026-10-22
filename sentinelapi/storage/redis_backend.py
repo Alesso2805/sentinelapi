@@ -55,6 +55,9 @@ class RedisBackend:
         # -2: no such key; -1: a key without expiry, which this backend never writes.
         return max(int(milliseconds), 0) / 1000
 
+    async def ping(self) -> bool:
+        return bool(await self._redis.ping())
+
     async def reset(self, key: str) -> None:
         await self._redis.delete(key)
 

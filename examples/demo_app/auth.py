@@ -8,7 +8,6 @@ sha256 alone is not an acceptable password hash in production.
 from __future__ import annotations
 
 import hashlib
-import math
 import uuid
 from typing import Annotated, Any, cast
 
@@ -16,12 +15,9 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from sentinelapi.client_address import ClientResolver
 from sentinelapi.clock import SYSTEM_CLOCK
 from sentinelapi.config import SentinelSettings
-from sentinelapi.detectors.brute_force import BruteForceDetector
-from sentinelapi.domain.entities import SecurityEvent
-from sentinelapi.logging_config import security_logger
+from sentinelapi.integration import Sentinel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -82,65 +78,32 @@ def decode_token(settings: SentinelSettings, token: str) -> dict[str, Any]:
     return payload
 
 
+def get_sentinel(request: Request) -> Sentinel:
+    return cast(Sentinel, request.app.state.sentinel)
+
+
 def get_settings(request: Request) -> SentinelSettings:
-    return cast(SentinelSettings, request.app.state.settings)
-
-
-def get_brute_force_detector(request: Request) -> BruteForceDetector:
-    return cast(BruteForceDetector, request.app.state.brute_force_detector)
+    return get_sentinel(request).settings
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
     payload: LoginRequest,
     request: Request,
-    detector: Annotated[BruteForceDetector, Depends(get_brute_force_detector)],
-    settings: Annotated[SentinelSettings, Depends(get_settings)],
+    sentinel: Annotated[Sentinel, Depends(get_sentinel)],
 ) -> TokenResponse:
-    resolver = cast(ClientResolver, request.app.state.client_resolver)
-    fingerprint = resolver.fingerprint(
-        peer=request.client.host if request.client else None,
-        forwarded_for=",".join(request.headers.getlist("x-forwarded-for")),
-        user_agent=request.headers.get("user-agent", ""),
-    )
-
+    guard = sentinel.login_guard
     # Before the password: a blocked source or account stays blocked even
-    # when the attacker finally guesses right (ADR-0005).
-    await _refuse_if_blocking(
-        request, await detector.check(fingerprint, payload.username, path="/auth/login")
-    )
+    # when the attacker finally guesses right (ADR-0005). Blocked → 429.
+    await guard.check(request, payload.username)
 
     stored_hash = _USERS.get(payload.username)
     if stored_hash is None or stored_hash != _hash_password(payload.password):
-        event = await detector.record_failure(fingerprint, payload.username, path="/auth/login")
-        await _refuse_if_blocking(request, event)
+        await guard.failed(request, payload.username)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    await detector.record_success(fingerprint, payload.username)
-    return _issue_tokens(settings, payload.username)
-
-
-async def _refuse_if_blocking(request: Request, event: SecurityEvent | None) -> None:
-    if event is None:
-        return
-    await security_logger.awarning(
-        "security_event",
-        threat_type=event.threat_type.value,
-        threat_level=event.threat_level.value,
-        path=event.path,
-        fingerprint=event.fingerprint.key,
-        detail=event.detail,
-    )
-    await request.app.state.persist_event(event)
-    if event.is_blocking():
-        # The same answer whether the account exists or not, with nothing an
-        # attacker could use: no count, no username, no axis.
-        retry_after = max(1, math.ceil(event.retry_after or 1))
-        raise HTTPException(
-            status_code=429,
-            detail="Too many failed sign-in attempts. Try again later.",
-            headers={"Retry-After": str(retry_after)},
-        )
+    await guard.succeeded(request, payload.username)
+    return _issue_tokens(sentinel.settings, payload.username)
 
 
 @router.post("/refresh", response_model=TokenResponse)

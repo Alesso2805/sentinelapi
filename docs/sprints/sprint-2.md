@@ -1,6 +1,6 @@
 # Sprint 2 — Detectors that hold: the same windows everywhere, limits that mean what they say, no cheap evasion (SEN-17 to SEN-21)
 
-**Status as of 2026-10-22:** closed. Started right after Sprint 1 and finished the same day, with no calendar: all five stories (19 points) merged with green CI, #10 to #14. Every evasion the audit found in the detectors is now a test, and five of the eight Known limitations left the README; the three left are the audit trail's (Sprint 3).
+**Status as of 2026-10-22:** closed. Started right after Sprint 1 and finished the same day, with no calendar: all five stories (19 points) merged with green CI, #10 to #14. Every evasion the audit found in the detectors is now a test, and six of the eight Known limitations left after Sprint 1 are gone from the README; the two left are the audit trail's (Sprint 3).
 
 **Order:** SEN-17 (its contract suite and injectable clock are what the rest stand on), SEN-19, SEN-18, SEN-20, SEN-21.
 

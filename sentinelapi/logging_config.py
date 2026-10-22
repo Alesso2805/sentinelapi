@@ -5,6 +5,8 @@ import sys
 
 import structlog
 
+from sentinelapi.domain.entities import SecurityEvent
+
 
 def configure_logging(json_output: bool = True) -> None:
     """Call once at app startup. JSON output in production so security
@@ -28,3 +30,16 @@ def configure_logging(json_output: bool = True) -> None:
 
 
 security_logger = structlog.get_logger("sentinelapi.security")
+
+
+async def log_event(event: SecurityEvent) -> None:
+    """The first place every event goes, before any sink: one structured
+    line, written at once, that a log aggregator can query."""
+    await security_logger.awarning(
+        "security_event",
+        threat_type=event.threat_type.value,
+        threat_level=event.threat_level.value,
+        path=event.path,
+        fingerprint=event.fingerprint.key,
+        detail=event.detail,
+    )

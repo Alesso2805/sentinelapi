@@ -98,12 +98,12 @@ allow_indirect_imports = true
 ignore_imports = ["sentinelapi.audit.** -> sqlalchemy"]
 
 [[tool.importlinter.contracts]]
-name = "AR-04: only the middleware imports Starlette or FastAPI"
+name = "AR-04: only the middleware and the installer import Starlette or FastAPI"
 type = "forbidden"
 source_modules = ["sentinelapi"]
 forbidden_modules = ["starlette", "fastapi"]
 allow_indirect_imports = true
-ignore_imports = ["sentinelapi.middleware -> starlette"]
+ignore_imports = ["sentinelapi.middleware -> starlette", "sentinelapi.integration -> starlette"]
 
 [[tool.importlinter.contracts]]
 name = "AR-05: the library never imports the demo"

@@ -20,6 +20,8 @@ class SentinelSettings(BaseSettings):
     # Audit log database (any SQLAlchemy async URL — sqlite+aiosqlite for
     # local/dev, postgresql+asyncpg for production)
     database_url: str = "sqlite+aiosqlite:///./sentinelapi_audit.db"
+    # false: events are only logged, never written to a database
+    audit: bool = True
 
     # Proxies whose X-Forwarded-For is believed, as CIDRs (ADR-0004). Empty: no
     # proxy, so the direct peer is the client and the header is ignored.

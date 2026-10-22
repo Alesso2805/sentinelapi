@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import ipaddress
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class SentinelSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="SENTINEL_", env_file=".env", extra="ignore")
+    # An empty variable means "use the default", as in .env.example.
+    model_config = SettingsConfigDict(
+        env_prefix="SENTINEL_", env_file=".env", extra="ignore", env_ignore_empty=True
+    )
 
     # Storage backend: "memory" (single-process, dev/demo) or "redis" (production)
     backend: str = "memory"
@@ -24,6 +27,12 @@ class SentinelSettings(BaseSettings):
     # Rate limiting
     rate_limit_max_requests: int = 60
     rate_limit_window_seconds: int = 60
+    # A MEDIUM warning when a client's count first passes it; 80 % of the limit if unset
+    rate_limit_warn_at: int | None = None
+    # Never counted: health checks must not be limited with the traffic they watch
+    rate_limit_exempt_paths: tuple[str, ...] = ("/health", "/ready")
+    # Stricter limits per path prefix, on top of the per-client one, e.g. {"/auth/": 10}
+    rate_limit_paths: dict[str, int] = Field(default_factory=dict)
 
     # Brute force
     brute_force_window_seconds: int = 900

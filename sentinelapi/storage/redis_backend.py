@@ -38,6 +38,11 @@ class RedisBackend:
         result = await self._redis.set(key, value, nx=True, ex=ttl_seconds)
         return bool(result)
 
+    async def ttl(self, key: str) -> float:
+        milliseconds = await self._redis.pttl(key)
+        # -2: no such key; -1: a key without expiry, which this backend never writes.
+        return max(int(milliseconds), 0) / 1000
+
     async def reset(self, key: str) -> None:
         await self._redis.delete(key)
 

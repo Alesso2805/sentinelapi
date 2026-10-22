@@ -55,29 +55,34 @@ async def test_refresh_token_cannot_be_replayed(client: AsyncClient) -> None:
 
 
 async def test_burst_of_requests_gets_rate_limited(client: AsyncClient) -> None:
-    # Default limit is 60/min, but RateLimiter only blocks (HIGH) once the
-    # overshoot itself exceeds the limit — i.e. past 2x max_requests (120).
-    # Below that it's a MEDIUM, log-only event (see test_rate_limiter.py).
-    statuses = [(await client.get("/health")).status_code for _ in range(125)]
-    assert statuses[-1] == 429
+    # The default limit is 60 per minute: the 61st request is blocked, and told when to retry.
+    responses = [await client.get("/api/widgets") for _ in range(61)]
+    assert {r.status_code for r in responses[:60]} == {404}
+    assert responses[60].status_code == 429
+    assert 1 <= int(responses[60].headers["Retry-After"]) <= 60
+
+
+async def test_health_checks_are_never_rate_limited(client: AsyncClient) -> None:
+    statuses = {(await client.get("/health")).status_code for _ in range(200)}
+    assert statuses == {200}
 
 
 async def test_apps_do_not_share_counters(make_client: ClientFactory) -> None:
     async with make_client() as first:
-        for _ in range(125):
-            await first.get("/health")
-        assert (await first.get("/health")).status_code == 429
+        for _ in range(60):
+            await first.get("/api/widgets")
+        assert (await first.get("/api/widgets")).status_code == 429
 
     async with make_client() as second:
-        assert (await second.get("/health")).status_code == 200
+        assert (await second.get("/api/widgets")).status_code == 404
 
 
 async def test_shadow_mode_records_events_but_never_blocks(make_client: ClientFactory) -> None:
     async with make_client(enforce=False) as client:
-        statuses = {(await client.get("/health")).status_code for _ in range(125)}
+        statuses = {(await client.get("/api/widgets")).status_code for _ in range(125)}
         events = (await client.get("/security/events")).json()
 
-    assert statuses == {200}
+    assert statuses == {404}
     assert {(e["threat_type"], e["threat_level"]) for e in events} == {("rate_limit_exceeded", "high")}
 
 
@@ -99,8 +104,8 @@ async def test_forwarded_for_from_an_untrusted_peer_is_ignored(client: AsyncClie
     # With no trusted proxy, every request below comes from the same client,
     # whatever address it claims.
     statuses = [
-        (await client.get("/health", headers={"X-Forwarded-For": f"198.51.100.{i % 250}"})).status_code
-        for i in range(125)
+        (await client.get("/api/widgets", headers={"X-Forwarded-For": f"198.51.100.{i}"})).status_code
+        for i in range(61)
     ]
     assert statuses[-1] == 429
 
@@ -110,8 +115,8 @@ async def test_clients_behind_a_trusted_proxy_get_their_own_limits(make_client: 
     # httpx's ASGI transport presents every request as coming from 127.0.0.1: here, the proxy.
     async with make_client(trusted_proxies=["127.0.0.1/32"]) as client:
         noisy = {"X-Forwarded-For": "203.0.113.66"}
-        for _ in range(125):
-            await client.get("/health", headers=noisy)
-        assert (await client.get("/health", headers=noisy)).status_code == 429
-        quiet = await client.get("/health", headers={"X-Forwarded-For": "203.0.113.67"})
-        assert quiet.status_code == 200
+        for _ in range(60):
+            await client.get("/api/widgets", headers=noisy)
+        assert (await client.get("/api/widgets", headers=noisy)).status_code == 429
+        quiet = await client.get("/api/widgets", headers={"X-Forwarded-For": "203.0.113.67"})
+        assert quiet.status_code == 404

@@ -71,6 +71,9 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
         backend,
         max_requests=settings.rate_limit_max_requests,
         window_seconds=settings.rate_limit_window_seconds,
+        warn_at=settings.rate_limit_warn_at,
+        path_limits=settings.rate_limit_paths,
+        exempt_paths=settings.rate_limit_exempt_paths,
     )
     brute_force_detector = BruteForceDetector(
         backend,

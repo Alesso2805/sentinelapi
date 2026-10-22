@@ -37,3 +37,8 @@ class CounterBackend(Protocol):
     async def reset(self, key: str) -> None:
         """Clear a key immediately (e.g. after a successful login)."""
         ...
+
+    async def ttl(self, key: str) -> float:
+        """Seconds until `key` expires, what is left of its window; 0 if it
+        does not exist. This is what a Retry-After header tells the client."""
+        ...

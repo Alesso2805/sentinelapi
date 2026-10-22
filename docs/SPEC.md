@@ -46,8 +46,8 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 
 | Area | Feature | Detail | Status |
 | --- | --- | --- | --- |
-| Rate limiting | Per-client limit | Fixed window of `rate_limit_window_seconds`, keyed on the client's address + path since SEN-19; over the limit → MEDIUM, logged; past twice the limit → HIGH, 429 | Built (SEN-02, SEN-19); blocks right after the limit in SEN-18 |
-| Rate limiting | `Retry-After`, exempt paths, stricter limits per path prefix | | Planned (SEN-18) |
+| Rate limiting | Per-client limit | Fixed window of `rate_limit_window_seconds`, one counter per client (its address, since SEN-19), whatever the path; the request after `rate_limit_max_requests` → HIGH, 429 with `Retry-After`; crossing `rate_limit_warn_at` → MEDIUM once per window | Built (SEN-02, SEN-18, SEN-19) |
+| Rate limiting | `Retry-After`, exempt paths, stricter limits per path prefix | `/health` and `/ready` exempt by default; a prefix such as `/auth/` adds its own, stricter counter | Built (SEN-18) |
 | Rate limiting | Client address behind a proxy | Trusted proxies and `X-Forwarded-For`; IPv6 grouped by /64 | Built (SEN-19, ADR-0004) |
 | Brute force | Two axes | Failures per fingerprint (MEDIUM 5, HIGH 10) and per username (HIGH 8, CRITICAL 15) in 15 minutes; a success clears both | Built (SEN-03) |
 | Brute force | A block that holds | Checked before the password; usernames normalized; a success clears only its own source | Planned (SEN-20, ADR-0005) |
@@ -119,7 +119,7 @@ What each verdict means. Every "Target" cell is checked by a test in the story n
 | --- | --- | --- |
 | Client address | Since SEN-19: the direct peer; behind a trusted proxy (`SENTINEL_TRUSTED_PROXIES`), the right-most `X-Forwarded-For` hop no trusted proxy wrote. Before, `request.client.host`: the proxy's address behind one, so every client shared it (seen live as the Docker gateway) | Done (SEN-19, ADR-0004) |
 | Fingerprint | SHA-256 of the address, the User-Agent and the user id, first 32 hex characters; since SEN-19 it only correlates events in the audit trail | Done (SEN-19) |
-| Rate-limit key | Since SEN-19 the client's address (IPv6 by /64) + exact path, so a new User-Agent no longer opens a new counter; a new path still does | Client address, plus one counter per configured path prefix (SEN-18) |
+| Rate-limit key | Fingerprint + exact path until SEN-19, so a new User-Agent or a new path opened a new counter. Since SEN-18 and SEN-19: the client's address (IPv6 by /64), plus one counter per configured path prefix | Done (SEN-18, SEN-19) |
 | Brute-force keys | Since SEN-19 the client's address for the source axis; the username exactly as typed | The username normalized (trim, casefold), with the normalizer replaceable (SEN-20) |
 
 ### Windows
@@ -135,9 +135,9 @@ Until SEN-17 the memory backend moved its expiry forward on every hit, so a clie
 
 | Detector | Condition | As built | Target |
 | --- | --- | --- | --- |
-| Rate limit | count > `rate_limit_max_requests` | MEDIUM, logged | HIGH, blocked with 429 and `Retry-After` (SEN-18) |
-| Rate limit | count > 2 × `rate_limit_max_requests` | HIGH, 429 | (covered by the row above) |
-| Rate limit | count > `rate_limit_warn_at` (default 80 % of the limit) | — | MEDIUM, logged (SEN-18) |
+| Rate limit | count > `rate_limit_max_requests` | MEDIUM until SEN-18; since then HIGH, 429 with `Retry-After` | Done (SEN-18) |
+| Rate limit | count > 2 × `rate_limit_max_requests` | HIGH, 429: the first block until SEN-18 | (covered by the row above) |
+| Rate limit | count passes `rate_limit_warn_at` (default 80 % of the limit) | MEDIUM, logged once per window since SEN-18 | Done (SEN-18) |
 | Brute force | failures from one source ≥ 5 | MEDIUM | Same |
 | Brute force | failures from one source ≥ 10 | HIGH, 403 | HIGH; the source is refused before its password is checked until the window ends (SEN-20) |
 | Brute force | failures against one username ≥ 8 | HIGH, 403 | Per ADR-0005 |
@@ -150,7 +150,7 @@ HIGH and CRITICAL block; LOW and MEDIUM are only logged and recorded.
 
 ### HTTP responses
 
-- **Middleware, enforcing and blocking:** 429 for rate limiting, 403 otherwise, with `{"detail": "Request blocked by SentinelAPI", "reason": "<threat_type>"}`. From SEN-18 a 429 carries `Retry-After`.
+- **Middleware, enforcing and blocking:** 429 for rate limiting, 403 otherwise, with `{"detail": "Request blocked by SentinelAPI", "reason": "<threat_type>"}`. Since SEN-18 a 429 carries `Retry-After`, the seconds left in the window.
 - **Demo login, as built:** 403 with `"Blocked by SentinelAPI: <detail>"`, which reveals the failure count and the username. Target: 429 with `Retry-After` and no internal detail (SEN-20).
 - **Shadow mode** (`SENTINEL_ENFORCE=false`): the same events are logged and recorded; nothing is blocked.
 
@@ -188,7 +188,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_BACKEND` | `memory` | `memory` or `redis`; any other value silently means memory today | Built; a typo fails from SEN-27 |
 | `SENTINEL_REDIS_URL` | `redis://localhost:6379/0` | Redis for counters | Built |
 | `SENTINEL_DATABASE_URL` | `sqlite+aiosqlite:///./sentinelapi_audit.db` | Audit database | Built |
-| `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window | Built; its meaning changes in SEN-18 |
+| `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window per client; the next one is blocked | Built; until SEN-18 blocking started past twice it |
 | `SENTINEL_RATE_LIMIT_WINDOW_SECONDS` | `60` | Window length | Built |
 | `SENTINEL_BRUTE_FORCE_WINDOW_SECONDS` | `900` | Brute-force window | Built |
 | `SENTINEL_BRUTE_FORCE_PER_FINGERPRINT_MEDIUM` / `_HIGH` | `5` / `10` | Failures from one source | Built |
@@ -201,9 +201,9 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_ALLOW_MEMORY_BACKEND` | `false` | Lets production run the memory backend, for a single process | Planned (SEN-27) |
 | `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock` or `signal`: what the account axis does (ADR-0005) | Planned (SEN-20) |
 | `SENTINEL_TRUSTED_PROXIES` | empty | CIDRs whose `X-Forwarded-For` is believed | Built (SEN-19) |
-| `SENTINEL_RATE_LIMIT_WARN_AT` | 80 % of the limit | MEDIUM threshold | Planned (SEN-18) |
-| `SENTINEL_RATE_LIMIT_EXEMPT_PATHS` | `["/health", "/ready"]` | Never counted | Planned (SEN-18) |
-| `SENTINEL_RATE_LIMIT_PATHS` | empty | Stricter limits per path prefix | Planned (SEN-18) |
+| `SENTINEL_RATE_LIMIT_WARN_AT` | 80 % of the limit | MEDIUM threshold, logged once per window | Built (SEN-18) |
+| `SENTINEL_RATE_LIMIT_EXEMPT_PATHS` | `["/health", "/ready"]` | Never counted | Built (SEN-18) |
+| `SENTINEL_RATE_LIMIT_PATHS` | empty | Stricter limits per path prefix, e.g. `{"/auth/": 10}` | Built (SEN-18) |
 | `SENTINEL_JWT_AUDIENCE`, `SENTINEL_JWT_ISSUER` | empty | Checked when set | Planned (SEN-21) |
 | `SENTINEL_AUDIT_HASH_KEY` | none; required in production | Key for `client_hash` and `subject_hash` | Planned (SEN-24) |
 | `SENTINEL_AUDIT_RETENTION_DAYS` | `90` | Purge horizon | Planned (SEN-24) |
@@ -218,7 +218,7 @@ The demo app is not part of the library; it is how a visitor and the tests see t
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/health` | Public | Liveness. Counted by the rate limiter today; exempt from SEN-18 |
+| GET | `/health` | Public | Liveness; never rate limited (SEN-18) |
 | GET | `/ready` | Public | Redis and database reachable, 503 otherwise. Planned (SEN-30) |
 | POST | `/auth/login` | Public | JSON `{username, password}` → `{access_token, refresh_token}`; 401 wrong credentials; 403 brute force (429 from SEN-20) |
 | POST | `/auth/refresh` | Bearer refresh token | New pair; a replayed token is stopped by the middleware with 403 |

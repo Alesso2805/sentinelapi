@@ -317,9 +317,9 @@ sentinelapi/
 ├── .github/workflows/ci.yml      # SEN-14
 ├── docker-compose.yml            # with the migrate service (SEN-29)
 ├── Dockerfile
-├── Makefile                      # SEN-11
+├── Makefile
 ├── pyproject.toml
-├── uv.lock                       # SEN-11
+├── uv.lock
 ├── CHANGELOG.md                  # SEN-37
 ├── LICENSE
 ├── SECURITY.md

@@ -55,10 +55,14 @@ curl http://localhost:8000/health
 
 ### Local dev (in-memory backend + SQLite, zero external services)
 
+With [uv](https://docs.astral.sh/uv/), which installs the exact versions of `uv.lock`:
+
 ```bash
-pip install -e ".[demo]"
-uvicorn examples.demo_app.main:app --reload
+uv sync --all-extras
+uv run uvicorn examples.demo_app.main:app --reload
 ```
+
+Or with pip: `pip install -e ".[demo]"`, then `uvicorn examples.demo_app.main:app --reload`.
 
 Try it:
 
@@ -83,14 +87,15 @@ Two layers, on purpose:
 
 ```bash
 # Core detectors — stdlib unittest, no framework, database or Redis needed
-python -m unittest discover -s tests -p "test_rate_limiter.py"
-python -m unittest discover -s tests -p "test_brute_force.py"
-python -m unittest discover -s tests -p "test_jwt_replay.py"
+uv run python -m unittest discover -s tests -p "test_rate_limiter.py"
+uv run python -m unittest discover -s tests -p "test_brute_force.py"
+uv run python -m unittest discover -s tests -p "test_jwt_replay.py"
 
-# Full app, end-to-end — needs the [dev] extras installed
-pip install -e ".[dev]"
-pytest tests/test_middleware_integration.py -v
+# Everything, the full app end-to-end included
+uv run pytest
 ```
+
+`make test`, `make lint`, `make typecheck` and `make demo` wrap the same commands.
 
 The first three files need no running service by design (only the package and PyJWT), so the detection logic itself can be verified without spinning up FastAPI, Redis, or a database — that's what let this project be built and tested inside a sandboxed environment with no network access, before ever touching Docker.
 

@@ -29,6 +29,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
+      # AR-04 and AR-05, as import contracts (pyproject.toml).
+      - run: uv run lint-imports
 
   tests:
     name: Tests (Python ${{ matrix.python }})

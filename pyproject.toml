@@ -51,6 +51,8 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.9",
     "import-linter>=2.15",
+    "playwright>=1.64.1",
+    "axe-playwright-python>=0.1.8",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -59,6 +61,9 @@ packages = ["sentinelapi"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# The browser tests need Chromium (`uv run playwright install chromium`); CI runs them in their own job.
+markers = ["browser: drives Chromium with Playwright"]
+addopts = "-m 'not browser'"
 
 [tool.ruff]
 line-length = 110
@@ -118,3 +123,8 @@ python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
 files = ["sentinelapi", "examples", "tests", "scripts"]
+
+# axe-playwright-python ships no type information.
+[[tool.mypy.overrides]]
+module = ["axe_playwright_python.*"]
+ignore_missing_imports = true

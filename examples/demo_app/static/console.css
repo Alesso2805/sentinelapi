@@ -1,0 +1,273 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1b1d21;
+  --muted: #555b65;
+  --line: #d9dbe0;
+  --accent: #1f5fbf;
+  --accent-text: #ffffff;
+  --allowed: #1d6b3a;
+  --warned: #8a5300;
+  --rejected: #555b65;
+  --blocked: #b3261e;
+  --focus: #1f5fbf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --surface: #1c1f24;
+    --text: #e8e9ec;
+    --muted: #a5aab3;
+    --line: #343840;
+    --accent: #7fb0ff;
+    --accent-text: #0d1b33;
+    --allowed: #6fd193;
+    --warned: #f2b85b;
+    --rejected: #a5aab3;
+    --blocked: #ff8a80;
+    --focus: #7fb0ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.skip {
+  position: absolute;
+  left: -999px;
+}
+
+.skip:focus {
+  left: 16px;
+  top: 16px;
+  padding: 8px 12px;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.masthead,
+main,
+.footer {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.masthead {
+  padding-top: 40px;
+}
+
+.brand {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+h1 {
+  margin: 4px 0 12px;
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 40px 0 12px;
+  font-size: 1.3rem;
+}
+
+h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.lede {
+  max-width: 68ch;
+  color: var(--muted);
+}
+
+.attacks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attack {
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.attack p {
+  flex: 1;
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+button {
+  align-self: flex-start;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.summary {
+  max-width: 75ch;
+  font-weight: 500;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+td:nth-child(2),
+td:nth-child(4) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.badge {
+  font-weight: 700;
+}
+
+.badge::before {
+  margin-right: 4px;
+}
+
+.badge-allowed {
+  color: var(--allowed);
+}
+
+.badge-allowed::before {
+  content: "✓";
+}
+
+.badge-warned {
+  color: var(--warned);
+}
+
+.badge-warned::before {
+  content: "!";
+}
+
+.badge-rejected {
+  color: var(--rejected);
+}
+
+.badge-rejected::before {
+  content: "×";
+}
+
+.badge-blocked {
+  color: var(--blocked);
+}
+
+.badge-blocked::before {
+  content: "■";
+}
+
+.detail {
+  display: block;
+  color: var(--muted);
+}
+
+.hint {
+  color: var(--muted);
+  margin: 4px 0;
+}
+
+.events {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--rejected);
+  border-radius: 6px;
+}
+
+.event-medium {
+  border-left-color: var(--warned);
+}
+
+.event-high,
+.event-critical {
+  border-left-color: var(--blocked);
+}
+
+.footer {
+  margin-top: 48px;
+  padding-bottom: 40px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

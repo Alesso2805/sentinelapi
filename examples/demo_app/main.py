@@ -30,6 +30,7 @@ from sentinelapi.logging_config import configure_logging
 
 from .auth import decode_token
 from .auth import router as auth_router
+from .console import install_console
 
 _security = HTTPBearer()
 
@@ -94,6 +95,8 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     app = FastAPI(title="SentinelAPI demo")
     install_sentinel(app, settings)
     app.include_router(auth_router)
+    if settings.demo_mode:
+        install_console(app)
 
     @app.get("/me", response_model=Me)
     async def me(

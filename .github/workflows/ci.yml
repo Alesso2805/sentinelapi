@@ -153,3 +153,18 @@ jobs:
         run: docker compose ps -a && docker compose logs --tail 100
       - if: always()
         run: docker compose down -v
+
+  browser:
+    name: Attack console in a browser (axe-core)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      - run: uv run playwright install --with-deps chromium
+      # The keyboard alone runs an attack, the live stream arrives, and axe-core finds
+      # no serious or critical violation, in the light theme and the dark one.
+      - run: uv run pytest -m browser

@@ -81,6 +81,9 @@ class SentinelSettings(BaseSettings):
     # your refresh/redeem endpoints — see jwt_replay.py for why)
     jwt_replay_paths: tuple[str, ...] = ("/auth/refresh",)
 
+    # The demo's attack console at / (ADR-0010, SEN-32); off, its routes do not exist
+    demo_mode: bool = False
+
     # The bearer token of the demo's events API (SEN-26). Unset: nobody reads the events
     operator_token: str | None = None
 

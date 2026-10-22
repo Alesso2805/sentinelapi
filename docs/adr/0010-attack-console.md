@@ -28,6 +28,7 @@ Option 2, an "attack console":
 
 ## Consequences
 
+- **As built (SEN-32):** a static page and about 100 lines of plain JavaScript, not Jinja2 and HTMX. Nothing on the page is rendered per visitor, so no template engine is needed, and a security demo carries no third-party script; its Content Security Policy allows only its own origin. Each run gets `Sentinel.sandbox()`: fresh detectors with the app's settings on a memory backend of their own, built by the installer (AR-18), so two visitors never interfere and every run starts the same way.
 - The README's "React dashboard" item is replaced by this console. If a richer dashboard is wanted later, it reads the same events API (SEN-26).
 - The scenarios exercise the real detectors and the real audit sink, so the console doubles as an end-to-end test of the deployed stack.
 - Spanish and English, as the other portfolio demos have, is a Could (SEN-41).

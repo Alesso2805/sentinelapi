@@ -5,6 +5,7 @@
 
 x-production: &production
   SENTINEL_ENV: production
+  SENTINEL_DEMO_MODE: "true"
   SENTINEL_JWT_SECRET: ${SENTINEL_JWT_SECRET:?set it in .env}
   SENTINEL_AUDIT_HASH_KEY: ${SENTINEL_AUDIT_HASH_KEY:?set it in .env}
   SENTINEL_OPERATOR_TOKEN: ${SENTINEL_OPERATOR_TOKEN:?set it in .env}

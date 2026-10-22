@@ -9,7 +9,7 @@ from sentinelapi.detectors.jwt_replay import JWTReplayDetector
 from sentinelapi.domain.entities import ThreatLevel, ThreatType
 from sentinelapi.storage.memory_backend import InMemoryBackend
 
-SECRET = "test-secret-do-not-use-in-prod"
+SECRET = "test-secret-do-not-use-in-production-0123456789"
 
 
 def make_refresh_token(*, jti: str | None = None, expires_in: int = 3600) -> str:

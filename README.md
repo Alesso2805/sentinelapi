@@ -87,9 +87,9 @@ Two layers, on purpose:
 
 ```bash
 # Core detectors — stdlib unittest, no framework, database or Redis needed
-uv run python -m unittest discover -s tests -p "test_rate_limiter.py"
-uv run python -m unittest discover -s tests -p "test_brute_force.py"
-uv run python -m unittest discover -s tests -p "test_jwt_replay.py"
+uv run python -m unittest discover -s tests/unit -p "test_rate_limiter.py"
+uv run python -m unittest discover -s tests/unit -p "test_brute_force.py"
+uv run python -m unittest discover -s tests/unit -p "test_jwt_replay.py"
 
 # Everything, the full app end-to-end included
 uv run pytest
@@ -123,7 +123,6 @@ Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACK
 - **A single-use token without `exp` is remembered for one hour only** (SEN-21).
 - **The audit trail stores raw IP addresses** and, for brute force, the targeted username; the demo's `/security/events` needs no credentials; every event is one row, written inside the request (SEN-24, SEN-25, SEN-26).
 - **The audit table is created with `create_all` at startup,** not by migrations (SEN-23).
-- **The integration tests write to the demo's SQLite file** in the working directory (SEN-13).
 
 ## Roadmap
 

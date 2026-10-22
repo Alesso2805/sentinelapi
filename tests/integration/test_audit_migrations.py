@@ -17,13 +17,17 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from sentinelapi.audit.migrate import check, current, downgrade, head, upgrade
+from sentinelapi.audit.retention import purge
 from sentinelapi.audit.sink import DatabaseAuditSink
 from sentinelapi.detectors.fingerprint import build_fingerprint
 from sentinelapi.domain.entities import SecurityEvent, ThreatLevel, ThreatType
+from sentinelapi.privacy import Pseudonymizer
+from tests.fakes import FakeClock
 
 TABLE = "sentinel_security_events"
 POSTGRES = os.environ.get("SENTINEL_TEST_DATABASE_URL")
 APP_ROLE, APP_PASSWORD = "sentinel_test_app", "app-role-password"
+PSEUDONYMIZE = Pseudonymizer("test-audit-hash-key")
 
 
 @pytest.fixture(params=["sqlite", "postgres"])
@@ -56,14 +60,14 @@ async def execute(database_url: str, sql: str) -> None:
         await engine.dispose()
 
 
-def an_event() -> SecurityEvent:
+def an_event(occurred_at: float = 1_800_000_000.0) -> SecurityEvent:
     return SecurityEvent(
         threat_type=ThreatType.BRUTE_FORCE,
         threat_level=ThreatLevel.HIGH,
         fingerprint=build_fingerprint("203.0.113.7", "test"),
         path="/auth/login",
         detail="test",
-        occurred_at=1_800_000_000.0,
+        occurred_at=occurred_at,
     )
 
 
@@ -87,14 +91,14 @@ async def test_the_database_refuses_an_unknown_threat_type(database_url: str) ->
     with pytest.raises(IntegrityError):
         await execute(
             database_url,
-            f"INSERT INTO {TABLE} (id, threat_type, threat_level, fingerprint_key, ip, path, detail,"
-            " occurred_at) VALUES ('x', 'nonsense', 'high', 'k', 'a', '/', 'd', CURRENT_TIMESTAMP)",
+            f"INSERT INTO {TABLE} (id, threat_type, threat_level, fingerprint_key, path, detail, occurred_at)"
+            " VALUES ('x', 'nonsense', 'high', 'k', '/', 'd', CURRENT_TIMESTAMP)",
         )
 
 
 async def test_the_sink_writes_and_reads_events(database_url: str) -> None:
     await upgrade(database_url)
-    sink = DatabaseAuditSink(database_url)
+    sink = DatabaseAuditSink(database_url, PSEUDONYMIZE)
     try:
         await sink.start()
         await sink(an_event())
@@ -119,7 +123,7 @@ async def test_the_app_role_cannot_rewrite_the_audit_trail() -> None:  # AR-12
     as_app = make_url(POSTGRES).set(username=APP_ROLE, password=APP_PASSWORD)
     as_app_url = as_app.render_as_string(hide_password=False)
     try:
-        sink = DatabaseAuditSink(as_app_url)
+        sink = DatabaseAuditSink(as_app_url, PSEUDONYMIZE)
         await sink(an_event())  # INSERT works
         assert len(await sink.recent_critical()) == 1  # SELECT works
         await sink.close()
@@ -128,3 +132,16 @@ async def test_the_app_role_cannot_rewrite_the_audit_trail() -> None:  # AR-12
                 await execute(as_app_url, statement)
     finally:
         await downgrade(POSTGRES, "base")
+
+
+async def test_purge_deletes_only_what_is_past_retention(database_url: str) -> None:
+    await upgrade(database_url)
+    clock = FakeClock()
+    sink = DatabaseAuditSink(database_url, PSEUDONYMIZE)
+    try:
+        await sink(an_event(occurred_at=clock.now() - 91 * 86_400))
+        await sink(an_event(occurred_at=clock.now() - 89 * 86_400))
+        assert await purge(database_url, older_than_days=90, clock=clock) == 1
+        assert len(await sink.recent_critical()) == 1
+    finally:
+        await sink.close()

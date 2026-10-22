@@ -32,6 +32,7 @@ from sentinelapi.detectors.rate_limiter import RateLimiter
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent
 from sentinelapi.logging_config import log_event, security_logger
 from sentinelapi.middleware import SentinelMiddleware
+from sentinelapi.privacy import Pseudonymizer
 from sentinelapi.storage.backend import CounterBackend
 from sentinelapi.storage.memory_backend import InMemoryBackend
 
@@ -116,7 +117,8 @@ class Sentinel:
             issuer=settings.jwt_issuer,
             clock=clock,
         )
-        self.audit = DatabaseAuditSink(settings.database_url) if settings.audit else None
+        self.pseudonymize = Pseudonymizer(settings.audit_hash_key)
+        self.audit = DatabaseAuditSink(settings.database_url, self.pseudonymize) if settings.audit else None
         self.login_guard = LoginGuard(self)
         self._on_event = on_event
 
@@ -124,7 +126,7 @@ class Sentinel:
         """Every event: the log line first, then the audit table, then the
         app's own `on_event`. A failing sink is logged and never stops the
         others, nor the request."""
-        await log_event(event)
+        await log_event(event, self.pseudonymize)
         sinks = [s for s in (self.audit, self._on_event) if s is not None]
         for sink in sinks:
             try:
@@ -133,6 +135,11 @@ class Sentinel:
                 await security_logger.aexception("security_event_sink_failed", sink=type(sink).__name__)
 
     async def start(self) -> None:
+        if self.pseudonymize.ephemeral:
+            await security_logger.awarning(
+                "audit_hash_key_not_set",
+                hint="set SENTINEL_AUDIT_HASH_KEY: without it, hashes change at every restart",
+            )
         if self.audit is not None:
             await self.audit.start()
 

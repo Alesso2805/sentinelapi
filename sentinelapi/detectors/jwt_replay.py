@@ -60,8 +60,13 @@ class JWTReplayDetector:
             )
         except jwt.ExpiredSignatureError:
             return self._event(fingerprint, path, ThreatLevel.LOW, "expired token presented")
+        except jwt.MissingRequiredClaimError as exc:
+            return self._event(
+                fingerprint, path, ThreatLevel.MEDIUM, f"invalid token: no '{exc.claim}' claim"
+            )
         except jwt.InvalidTokenError as exc:
-            return self._event(fingerprint, path, ThreatLevel.MEDIUM, f"invalid token: {exc}")
+            # The exception's name only: its message may quote the token.
+            return self._event(fingerprint, path, ThreatLevel.MEDIUM, f"invalid token: {type(exc).__name__}")
 
         jti, exp = payload["jti"], payload["exp"]
         if not isinstance(jti, str) or not jti:
@@ -76,7 +81,7 @@ class JWTReplayDetector:
                 fingerprint=fingerprint,
                 path=path,
                 occurred_at=self._clock.now(),
-                detail=f"token jti={jti[:8]}... was already redeemed — likely token theft",
+                detail="a single-use token was presented again — likely token theft",
             )
         return None
 

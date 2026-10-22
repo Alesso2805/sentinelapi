@@ -6,6 +6,7 @@ import sys
 import structlog
 
 from sentinelapi.domain.entities import SecurityEvent
+from sentinelapi.privacy import Pseudonymizer
 
 
 def configure_logging(json_output: bool = True) -> None:
@@ -32,14 +33,19 @@ def configure_logging(json_output: bool = True) -> None:
 security_logger = structlog.get_logger("sentinelapi.security")
 
 
-async def log_event(event: SecurityEvent) -> None:
+async def log_event(event: SecurityEvent, pseudonymize: Pseudonymizer | None = None) -> None:
     """The first place every event goes, before any sink: one structured
-    line, written at once, that a log aggregator can query."""
+    line, written at once, that a log aggregator can query. With a
+    pseudonymizer (the installer always passes one), identifiers are its
+    keyed hashes, as in the audit table (AR-13)."""
+    fingerprint = pseudonymize(event.fingerprint.key) if pseudonymize else event.fingerprint.key
     await security_logger.awarning(
         "security_event",
         threat_type=event.threat_type.value,
         threat_level=event.threat_level.value,
         path=event.path,
-        fingerprint=event.fingerprint.key,
+        fingerprint=fingerprint,
+        client=pseudonymize(event.fingerprint.ip) if pseudonymize else None,
+        subject=pseudonymize(event.subject) if pseudonymize else None,
         detail=event.detail,
     )

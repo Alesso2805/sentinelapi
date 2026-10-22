@@ -8,11 +8,13 @@ from sentinelapi.audit.models import SecurityEventLog
 from sentinelapi.audit.repository import SecurityEventRepository
 from sentinelapi.domain.entities import SecurityEvent
 from sentinelapi.logging_config import security_logger
+from sentinelapi.privacy import Pseudonymizer
 
 
 class DatabaseAuditSink:
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, pseudonymize: Pseudonymizer) -> None:
         self._database_url = database_url
+        self._pseudonymize = pseudonymize
         self._engine, self._sessions = create_engine_and_sessionmaker(database_url)
 
     async def start(self) -> None:
@@ -33,11 +35,11 @@ class DatabaseAuditSink:
 
     async def __call__(self, event: SecurityEvent) -> None:
         async with session_scope(self._sessions) as session:
-            await SecurityEventRepository(session).add(event)
+            await SecurityEventRepository(session, self._pseudonymize).add(event)
 
     async def recent_critical(self, limit: int = 50) -> list[SecurityEventLog]:
         async with session_scope(self._sessions) as session:
-            return await SecurityEventRepository(session).recent_critical(limit=limit)
+            return await SecurityEventRepository(session, self._pseudonymize).recent_critical(limit=limit)
 
     async def close(self) -> None:
         await self._engine.dispose()

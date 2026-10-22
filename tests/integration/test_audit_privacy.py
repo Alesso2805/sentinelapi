@@ -6,7 +6,6 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-import pytest
 import structlog
 
 from .conftest import ClientFactory
@@ -16,7 +15,6 @@ USERNAME = "alice@example.com"
 CLIENT_ADDRESS = "127.0.0.1"
 
 
-@pytest.mark.xfail(strict=True, reason="SEN-24: the audit trail stores raw addresses and targeted usernames")
 async def test_no_raw_address_or_username_reaches_the_audit_trail(
     make_client: ClientFactory, tmp_path: Path
 ) -> None:

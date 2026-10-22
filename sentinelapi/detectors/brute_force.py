@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from enum import StrEnum
+from typing import NamedTuple
 
 from sentinelapi.clock import SYSTEM_CLOCK, Clock
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType
@@ -68,35 +69,35 @@ class BruteForceDetector:
     ) -> SecurityEvent | None:
         """Before the password is verified. A blocking event means: refuse
         this attempt, whether the password is right or not."""
-        source, account, _ = self._keys(fingerprint, username)
-        source_failures = await self._backend.get(source)
+        keys = self._keys(fingerprint, username)
+        source_failures = await self._backend.get(keys.source)
         if source_failures >= self._per_source_high:
             detail = f"source blocked after {source_failures} failed attempts"
-            return await self._event(fingerprint, path, ThreatLevel.HIGH, detail, source)
-        account_failures = await self._backend.get(account)
+            return await self._event(fingerprint, path, ThreatLevel.HIGH, detail, keys, blocked=keys.source)
+        account_failures = await self._backend.get(keys.account)
         if account_failures >= self._per_username_high:
-            return await self._account_event(fingerprint, path, account_failures, account, refusing=True)
+            return await self._account_event(fingerprint, path, account_failures, keys, refusing=True)
         return None
 
     async def record_failure(
         self, fingerprint: RequestFingerprint, username: str, path: str = "/login"
     ) -> SecurityEvent | None:
-        source, account, pair = self._keys(fingerprint, username)
-        source_failures = await self._backend.incr_with_expiry(source, self._window_seconds)
-        account_failures = await self._backend.incr_with_expiry(account, self._window_seconds)
-        await self._backend.incr_with_expiry(pair, self._window_seconds)
+        keys = self._keys(fingerprint, username)
+        source_failures = await self._backend.incr_with_expiry(keys.source, self._window_seconds)
+        account_failures = await self._backend.incr_with_expiry(keys.account, self._window_seconds)
+        await self._backend.incr_with_expiry(keys.pair, self._window_seconds)
 
         # The account signal takes priority: it's the stronger indicator of a
         # real, distributed attack rather than one person fat-fingering their
         # own password.
         if account_failures >= self._per_username_high:
-            return await self._account_event(fingerprint, path, account_failures, account, refusing=False)
+            return await self._account_event(fingerprint, path, account_failures, keys, refusing=False)
         if source_failures >= self._per_source_high:
             detail = f"{source_failures} failed attempts from a single source"
-            return await self._event(fingerprint, path, ThreatLevel.HIGH, detail, source)
+            return await self._event(fingerprint, path, ThreatLevel.HIGH, detail, keys, blocked=keys.source)
         if source_failures >= self._per_source_medium:
             detail = f"{source_failures} failed attempts from a single source"
-            return await self._event(fingerprint, path, ThreatLevel.MEDIUM, detail, None)
+            return await self._event(fingerprint, path, ThreatLevel.MEDIUM, detail, keys)
         return None
 
     async def record_success(self, fingerprint: RequestFingerprint, username: str) -> None:
@@ -104,35 +105,37 @@ class BruteForceDetector:
         user who mistyped a few times is not left flagged. Only those: the
         owner's login must not erase what other sources tried, and an
         attacker must not clear its record by signing into an account of its own."""
-        source, account, pair = self._keys(fingerprint, username)
-        mistakes = await self._backend.get(pair)
+        keys = self._keys(fingerprint, username)
+        mistakes = await self._backend.get(keys.pair)
         if mistakes:
-            await self._backend.decrement(source, mistakes)
-            await self._backend.decrement(account, mistakes)
-        await self._backend.reset(pair)
+            await self._backend.decrement(keys.source, mistakes)
+            await self._backend.decrement(keys.account, mistakes)
+        await self._backend.reset(keys.pair)
 
-    def _keys(self, fingerprint: RequestFingerprint, username: str) -> tuple[str, str, str]:
-        # A hash, so a 1 MB username is a 32-character key and no username is stored in the backend.
+    def _keys(self, fingerprint: RequestFingerprint, username: str) -> _Keys:
+        # A hash, so a 1 MB username is a 32-character key and no username is
+        # stored in the backend or carried by an event.
         normalized = self._normalize(username).encode("utf-8", "surrogatepass")
         account = hashlib.sha256(normalized).hexdigest()[:32]
-        return (
-            f"bf:src:{fingerprint.client}",
-            f"bf:acct:{account}",
-            f"bf:pair:{fingerprint.client}:{account}",
+        return _Keys(
+            source=f"bf:src:{fingerprint.client}",
+            account=f"bf:acct:{account}",
+            pair=f"bf:pair:{fingerprint.client}:{account}",
+            subject=account,
         )
 
     async def _account_event(
-        self, fingerprint: RequestFingerprint, path: str, failures: int, key: str, *, refusing: bool
+        self, fingerprint: RequestFingerprint, path: str, failures: int, keys: _Keys, *, refusing: bool
     ) -> SecurityEvent:
         if self._account_action is AccountAction.SIGNAL:
             detail = f"{failures} failed attempts against one account: ask for a challenge"
-            return await self._event(fingerprint, path, ThreatLevel.MEDIUM, detail, None, challenge=True)
+            return await self._event(fingerprint, path, ThreatLevel.MEDIUM, detail, keys, challenge=True)
         level = ThreatLevel.CRITICAL if failures >= self._per_username_critical else ThreatLevel.HIGH
         if refusing:
             detail = f"account locked after {failures} failed attempts"
         else:
             detail = f"{failures} failed attempts against one account (possible credential stuffing)"
-        return await self._event(fingerprint, path, level, detail, key)
+        return await self._event(fingerprint, path, level, detail, keys, blocked=keys.account)
 
     async def _event(
         self,
@@ -140,8 +143,9 @@ class BruteForceDetector:
         path: str,
         level: ThreatLevel,
         detail: str,
-        blocked_key: str | None,
+        keys: _Keys,
         *,
+        blocked: str | None = None,
         challenge: bool = False,
     ) -> SecurityEvent:
         return SecurityEvent(
@@ -151,6 +155,14 @@ class BruteForceDetector:
             path=path,
             occurred_at=self._clock.now(),
             detail=detail,
-            retry_after=await self._backend.ttl(blocked_key) if blocked_key else None,
+            retry_after=await self._backend.ttl(blocked) if blocked else None,
             challenge_required=challenge,
+            subject=keys.subject,
         )
+
+
+class _Keys(NamedTuple):
+    source: str
+    account: str
+    pair: str
+    subject: str  # an opaque id of the account: never the username

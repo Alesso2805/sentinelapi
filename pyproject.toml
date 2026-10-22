@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "sentinelapi"
 version = "0.1.0"
-description = "Adaptive threat-detection middleware for FastAPI: rate limiting, brute-force/credential-stuffing detection, and JWT-replay protection, with a full audit trail."
+description = "Threat-detection middleware for FastAPI: rate limiting, brute-force/credential-stuffing detection, and refresh-token replay protection, with an audit trail."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

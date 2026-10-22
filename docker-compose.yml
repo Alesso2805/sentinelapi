@@ -11,6 +11,8 @@ services:
       SENTINEL_DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinelapi
       SENTINEL_JWT_SECRET: change-me-in-production
       SENTINEL_ENFORCE: "true"
+      # Local development only: the demo's events API answers to this token
+      SENTINEL_OPERATOR_TOKEN: dev-operator-token
     depends_on:
       redis:
         condition: service_healthy

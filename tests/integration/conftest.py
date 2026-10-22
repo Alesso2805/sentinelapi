@@ -13,6 +13,9 @@ from sentinelapi.audit.migrate import upgrade
 from sentinelapi.config import SentinelSettings
 
 TEST_JWT_SECRET = "integration-test-secret-0123456789abcdef"
+TEST_OPERATOR_TOKEN = "integration-test-operator-token"
+OPERATOR = {"Authorization": f"Bearer {TEST_OPERATOR_TOKEN}"}
+ALICE_LOGIN = {"username": "alice@example.com", "password": "correct-horse-battery-staple"}
 
 ClientFactory = Callable[..., AbstractAsyncContextManager[AsyncClient]]
 
@@ -21,13 +24,13 @@ ClientFactory = Callable[..., AbstractAsyncContextManager[AsyncClient]]
 def make_client(tmp_path: Path) -> ClientFactory:
     @asynccontextmanager
     async def make(**overrides: Any) -> AsyncIterator[AsyncClient]:
-        settings = SentinelSettings(
-            _env_file=None,
-            backend="memory",
-            jwt_secret=TEST_JWT_SECRET,
-            database_url=f"sqlite+aiosqlite:///{(tmp_path / 'audit.db').as_posix()}",
-            **overrides,
-        )
+        defaults: dict[str, Any] = {
+            "backend": "memory",
+            "jwt_secret": TEST_JWT_SECRET,
+            "operator_token": TEST_OPERATOR_TOKEN,
+            "database_url": f"sqlite+aiosqlite:///{(tmp_path / 'audit.db').as_posix()}",
+        }
+        settings = SentinelSettings(_env_file=None, **{**defaults, **overrides})
         await upgrade(settings.database_url)
         app = create_app(settings)
         async with app.router.lifespan_context(app):

@@ -53,7 +53,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Brute force | A block that holds | `check` before the password: a blocked source, or a locked account (`lock`, the default), is refused with 429 until its window ends; `signal` asks the app for a challenge instead. Usernames trimmed and casefolded; a success takes back only that source's failures against that account | Built (SEN-20, ADR-0005) |
 | Token replay | Single-use tokens | Only on `jwt_replay_paths`; `exp` and `jti` required; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403; audience and issuer checked when set | Built (SEN-04, SEN-21) |
 | Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory since SEN-17 |
-| Audit | Event log | Table `sentinel_security_events`, created by the package's own migrations (`sentinel migrate`), with keyed hashes instead of addresses and accounts, written off the request path with identical events folded into one row, purged by `sentinel purge`; the demo's `GET /security/events` | Built (SEN-06, SEN-23, SEN-24, SEN-25); protected API SEN-26 |
+| Audit | Event log | Table `sentinel_security_events`, created by the package's own migrations (`sentinel migrate`), with keyed hashes instead of addresses and accounts, written off the request path with identical events folded into one row, purged by `sentinel purge`; the demo's `GET /security/events`, for operators only, with filters and pages | Built (SEN-06, SEN-23 to SEN-26) |
 | Enforcement | Shadow mode | `SENTINEL_ENFORCE=false` logs and records without blocking | Built (SEN-07), untested until SEN-13 |
 | Integration | One-call installer | `install_sentinel(app, settings, on_event=...)` builds and wires everything and returns a `Sentinel` whose `login_guard` the login calls; pure ASGI middleware | Built (SEN-22, ADR-0007) |
 | Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
@@ -214,7 +214,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_AUDIT_HASH_KEY` | none: a random key per process; required in production from SEN-27 | Key of the hashes that stand for addresses, accounts and fingerprints in the audit trail and the log | Built (SEN-24) |
 | `SENTINEL_AUDIT_RETENTION_DAYS` | `90` | What `sentinel purge` keeps | Built (SEN-24) |
 | `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Groups waiting to be written (past it, new ones are dropped and the drop logged); the window in which identical events become one row | Built (SEN-25) |
-| `SENTINEL_OPERATOR_TOKEN` | none | Protects the demo's events API | Planned (SEN-26) |
+| `SENTINEL_OPERATOR_TOKEN` | none: nobody reads the events | Bearer token of the demo's events API | Built (SEN-26) |
 | `SENTINEL_ALERT_WEBHOOK_URL` | empty | CRITICAL alerts | Planned (SEN-31) |
 | `SENTINEL_DEMO_MODE` | `false` | Turns on the attack console | Planned (SEN-32) |
 
@@ -228,8 +228,8 @@ The demo app is not part of the library; it is how a visitor and the tests see t
 | GET | `/ready` | Public | Redis and database reachable, 503 otherwise. Planned (SEN-30) |
 | POST | `/auth/login` | Public | JSON `{username, password}` → `{access_token, refresh_token}`; 401 wrong credentials; 429 with `Retry-After` while the source or the account is blocked (SEN-20) |
 | POST | `/auth/refresh` | Bearer refresh token | New pair; a replayed token is stopped by the middleware with 403 |
-| GET | `/me` | Bearer access token | `{user}` |
-| GET | `/security/events` | Public today; operator token from SEN-26 | The 50 latest HIGH and CRITICAL events |
+| GET | `/me` | Bearer access token | `Me {user}` |
+| GET | `/security/events` | Bearer `SENTINEL_OPERATOR_TOKEN` (public until SEN-26) | `EventPage {total, items}`, newest first; filters `threat_type`, `threat_level`, `since`; `offset`, `limit` ≤ 100. Every level, each row with its `count` and keyed hashes |
 | POST | `/demo/scenarios/{name}` | Public, only with `SENTINEL_DEMO_MODE` | Runs `burst`, `stuffing` or `replay` server-side with synthetic sources. Planned (SEN-32) |
 | GET | `/demo/events` | Public, only with `SENTINEL_DEMO_MODE` | Server-sent events with the visitor's own verdicts. Planned (SEN-32) |
 

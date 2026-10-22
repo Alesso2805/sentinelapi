@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from dataclasses import dataclass
+from datetime import datetime
 
 from sentinelapi.audit import migrate
 from sentinelapi.audit.db import create_engine_and_sessionmaker, session_scope
@@ -126,6 +127,20 @@ class DatabaseAuditSink:
                         self._pending[key] = pending
                     else:
                         self._dropped += pending.group.count
+
+    async def search(
+        self,
+        *,
+        threat_type: str | None = None,
+        threat_level: str | None = None,
+        since: datetime | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[SecurityEventLog], int]:
+        async with session_scope(self._sessions) as session:
+            return await SecurityEventRepository(session, self._pseudonymize).search(
+                threat_type=threat_type, threat_level=threat_level, since=since, offset=offset, limit=limit
+            )
 
     async def recent_critical(self, limit: int = 50) -> list[SecurityEventLog]:
         async with session_scope(self._sessions) as session:

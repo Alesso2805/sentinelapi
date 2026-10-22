@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sentinelapi.audit.models import SecurityEventLog
@@ -53,6 +53,33 @@ class SecurityEventRepository:
                 )
             )
         await self._session.commit()
+
+    async def search(
+        self,
+        *,
+        threat_type: str | None = None,
+        threat_level: str | None = None,
+        since: datetime | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[SecurityEventLog], int]:
+        """Newest first. Returns the page and how many rows match in all."""
+        filters = []
+        if threat_type is not None:
+            filters.append(SecurityEventLog.threat_type == threat_type)
+        if threat_level is not None:
+            filters.append(SecurityEventLog.threat_level == threat_level)
+        if since is not None:
+            filters.append(SecurityEventLog.last_occurred_at >= since)
+        total = await self._session.scalar(select(func.count()).select_from(SecurityEventLog).where(*filters))
+        page = await self._session.scalars(
+            select(SecurityEventLog)
+            .where(*filters)
+            .order_by(SecurityEventLog.occurred_at.desc(), SecurityEventLog.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(page), total or 0
 
     async def recent_critical(self, limit: int = 100) -> list[SecurityEventLog]:
         stmt = (

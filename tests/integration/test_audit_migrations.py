@@ -1,21 +1,130 @@
-"""AR-11 and AR-12: the audit table comes from migrations, reversible and
-append-only for the app's role. SEN-23 replaces these placeholders with
-the checks on a real Postgres."""
+"""AR-11 and AR-12: the audit table comes from migrations that match the
+models and reverse cleanly, and the app's role can only add and read rows.
+
+SQLite always; Postgres too when SENTINEL_TEST_DATABASE_URL is set (CI sets it).
+"""
 
 from __future__ import annotations
 
+import os
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.ext.asyncio import create_async_engine
 
-AUDIT = Path(__file__).resolve().parents[2] / "sentinelapi" / "audit"
+from sentinelapi.audit.migrate import check, current, downgrade, head, upgrade
+from sentinelapi.audit.sink import DatabaseAuditSink
+from sentinelapi.detectors.fingerprint import build_fingerprint
+from sentinelapi.domain.entities import SecurityEvent, ThreatLevel, ThreatType
+
+TABLE = "sentinel_security_events"
+POSTGRES = os.environ.get("SENTINEL_TEST_DATABASE_URL")
+APP_ROLE, APP_PASSWORD = "sentinel_test_app", "app-role-password"
 
 
-@pytest.mark.xfail(strict=True, reason="SEN-23: the table is created with create_all at startup")
-def test_the_audit_table_has_a_migration_history() -> None:  # AR-11
-    assert (AUDIT / "migrations").is_dir()
+@pytest.fixture(params=["sqlite", "postgres"])
+async def database_url(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator[str]:
+    if request.param == "sqlite":
+        yield f"sqlite+aiosqlite:///{(tmp_path / 'audit.db').as_posix()}"
+        return
+    if not POSTGRES:
+        pytest.skip("SENTINEL_TEST_DATABASE_URL is not set (CI sets it)")
+    await downgrade(POSTGRES, "base")
+    yield POSTGRES
+    await downgrade(POSTGRES, "base")
 
 
-@pytest.mark.xfail(strict=True, reason="SEN-23: no database role is limited to INSERT and SELECT")
-def test_the_app_role_cannot_rewrite_the_audit_trail() -> None:  # AR-12
-    assert (AUDIT / "migrations").is_dir()
+async def tables(database_url: str) -> set[str]:
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            return await connection.run_sync(lambda c: set(inspect(c).get_table_names()))
+    finally:
+        await engine.dispose()
+
+
+async def execute(database_url: str, sql: str) -> None:
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text(sql))
+    finally:
+        await engine.dispose()
+
+
+def an_event() -> SecurityEvent:
+    return SecurityEvent(
+        threat_type=ThreatType.BRUTE_FORCE,
+        threat_level=ThreatLevel.HIGH,
+        fingerprint=build_fingerprint("203.0.113.7", "test"),
+        path="/auth/login",
+        detail="test",
+        occurred_at=1_800_000_000.0,
+    )
+
+
+async def test_the_migrations_create_the_table_the_models_describe(database_url: str) -> None:  # AR-11
+    await upgrade(database_url)
+    assert TABLE in await tables(database_url)
+    assert await current(database_url) == head()
+    await check(database_url)  # raises if the models and the schema differ
+
+
+async def test_the_migrations_reverse_cleanly(database_url: str) -> None:  # AR-11
+    await upgrade(database_url)
+    await downgrade(database_url, "base")
+    assert TABLE not in await tables(database_url)
+    await upgrade(database_url)
+    assert TABLE in await tables(database_url)
+
+
+async def test_the_database_refuses_an_unknown_threat_type(database_url: str) -> None:
+    await upgrade(database_url)
+    with pytest.raises(IntegrityError):
+        await execute(
+            database_url,
+            f"INSERT INTO {TABLE} (id, threat_type, threat_level, fingerprint_key, ip, path, detail,"
+            " occurred_at) VALUES ('x', 'nonsense', 'high', 'k', 'a', '/', 'd', CURRENT_TIMESTAMP)",
+        )
+
+
+async def test_the_sink_writes_and_reads_events(database_url: str) -> None:
+    await upgrade(database_url)
+    sink = DatabaseAuditSink(database_url)
+    try:
+        await sink.start()
+        await sink(an_event())
+        rows = await sink.recent_critical()
+    finally:
+        await sink.close()
+    assert [(r.threat_type, r.threat_level, r.occurred_at.timestamp()) for r in rows] == [
+        ("brute_force", "high", 1_800_000_000.0)
+    ]
+
+
+@pytest.mark.skipif(not POSTGRES, reason="SENTINEL_TEST_DATABASE_URL is not set (CI sets it)")
+async def test_the_app_role_cannot_rewrite_the_audit_trail() -> None:  # AR-12
+    assert POSTGRES
+    await execute(
+        POSTGRES,
+        f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{APP_ROLE}') THEN "
+        f"CREATE ROLE {APP_ROLE} LOGIN PASSWORD '{APP_PASSWORD}'; END IF; END $$",
+    )
+    await downgrade(POSTGRES, "base")
+    await upgrade(POSTGRES, app_role=APP_ROLE)
+    as_app = make_url(POSTGRES).set(username=APP_ROLE, password=APP_PASSWORD)
+    as_app_url = as_app.render_as_string(hide_password=False)
+    try:
+        sink = DatabaseAuditSink(as_app_url)
+        await sink(an_event())  # INSERT works
+        assert len(await sink.recent_critical()) == 1  # SELECT works
+        await sink.close()
+        for statement in (f"UPDATE {TABLE} SET detail = 'rewritten'", f"DELETE FROM {TABLE}"):
+            with pytest.raises(DBAPIError, match="permission denied"):
+                await execute(as_app_url, statement)
+    finally:
+        await downgrade(POSTGRES, "base")

@@ -31,7 +31,11 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     "pyjwt>=2.7",
     "structlog>=24.1",
+    "alembic>=1.13",
 ]
+
+[project.scripts]
+sentinel = "sentinelapi.cli:main"
 
 [project.optional-dependencies]
 redis = ["redis>=5.0.1"]
@@ -73,8 +77,6 @@ select = ["E", "F", "I", "UP", "B", "TID251"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["TID251"]
 "sentinelapi/clock.py" = ["TID251"]
-# Known AR-16 debt, removed by the story named: SEN-23 (the audit model).
-"sentinelapi/audit/models.py" = ["TID251"]  # SEN-23
 
 # AR-04 and AR-05, checked by `lint-imports`. Third-party packages are confined to the module that needs them.
 [tool.importlinter]
@@ -90,12 +92,12 @@ allow_indirect_imports = true
 ignore_imports = ["sentinelapi.storage.redis_backend -> redis"]
 
 [[tool.importlinter.contracts]]
-name = "AR-04: only the audit package imports SQLAlchemy"
+name = "AR-04: only the audit package imports SQLAlchemy and Alembic"
 type = "forbidden"
 source_modules = ["sentinelapi"]
-forbidden_modules = ["sqlalchemy"]
+forbidden_modules = ["sqlalchemy", "alembic"]
 allow_indirect_imports = true
-ignore_imports = ["sentinelapi.audit.** -> sqlalchemy"]
+ignore_imports = ["sentinelapi.audit.** -> sqlalchemy", "sentinelapi.audit.** -> alembic"]
 
 [[tool.importlinter.contracts]]
 name = "AR-04: only the middleware and the installer import Starlette or FastAPI"

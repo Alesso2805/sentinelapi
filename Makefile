@@ -1,4 +1,4 @@
-.PHONY: install up down demo test lint format typecheck check-imports
+.PHONY: install up down migrate demo test lint format typecheck check-imports
 
 install:
 	uv sync --all-extras
@@ -9,8 +9,12 @@ up:
 down:
 	docker compose down
 
+# Creates or upgrades the audit table at SENTINEL_DATABASE_URL
+migrate:
+	uv run sentinel migrate
+
 # The demo app with the memory backend and SQLite, reloading on changes
-demo:
+demo: migrate
 	uv run uvicorn examples.demo_app.main:app --reload
 
 test:

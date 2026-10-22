@@ -9,7 +9,7 @@
 | Story | PRs | Result | Verification |
 | --- | --- | --- | --- |
 | SEN-27 | #20 | `SENTINEL_ENV=production` refuses, in one error naming each problem: a JWT secret that is an example value or under 32 bytes, a missing or short `SENTINEL_AUDIT_HASH_KEY`, and the memory backend unless `SENTINEL_ALLOW_MEMORY_BACKEND=true`. `SENTINEL_BACKEND` accepts only `memory` or `redis` in any environment | AR-10 holds, so the last strict xfails are gone. Each unsafe case changes one thing in an otherwise safe production configuration; every problem named at once; the memory backend allowed on purpose; development starts with the defaults; `Redis` (a typo) fails. 177 passed, 0 xfailed |
-| SEN-28 | — | — | — |
+| SEN-28 | #21 | Multi-stage Dockerfile on `python:3.12.15-slim-bookworm` with `uv` 0.11.25 copied from its pinned image; `uv sync --locked --no-dev --no-editable` with the `demo`, `redis` and `postgres` extras, dependencies in their own cached layer; a non-root user (uid 10001); `HEALTHCHECK` on `/health` with the standard library (no curl in a slim image); a `.dockerignore` that keeps tests, docs, databases and the agent's files out. CI job "Image builds and starts", now required on `main` | Built and run locally: healthy, `/health` 200, user `sentinel` (10001), no pytest, Ruff, Mypy or httpx inside, 317 MB; the same checks in the new CI job |
 | SEN-29 | — | — | — |
 | SEN-30 | — | — | — |
 | SEN-32 | — | — | — |

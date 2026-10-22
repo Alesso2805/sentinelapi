@@ -1,0 +1,45 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SENTINEL_BACKEND: redis
+      SENTINEL_REDIS_URL: redis://redis:6379/0
+      SENTINEL_DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinelapi
+      SENTINEL_JWT_SECRET: change-me-in-production
+      SENTINEL_ENFORCE: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinelapi
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - sentinelapi_pgdata:/var/lib/postgresql/data
+
+volumes:
+  sentinelapi_pgdata:

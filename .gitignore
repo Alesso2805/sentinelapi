@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.db
+*.db-shm
+*.db-wal
+.env
+dist/
+build/
+
+# The coding agent's instructions, settings and code graph: local to each workstation
+CLAUDE.md
+.claude/
+graphify-out/
+
+# Internal working notes: the architecture audit and the comments awaiting a decision
+docs/AUDIT.md
+docs/COMMENTS_REVIEW.md

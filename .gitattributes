@@ -1,0 +1,2 @@
+# LF across the whole repo: the Dockerfile and the scripts run on Linux, even from a Windows checkout.
+* text=auto eol=lf

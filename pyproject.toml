@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sentinelapi"
+version = "0.1.0"
+description = "Adaptive threat-detection middleware for FastAPI: rate limiting, brute-force/credential-stuffing detection, and JWT-replay protection, with a full audit trail."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Alessandro David Polanco" }]
+
+dependencies = [
+    "fastapi>=0.110",
+    "starlette>=0.36",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "sqlalchemy>=2.0",
+    "pyjwt>=2.7",
+    "structlog>=24.1",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=4.2"]
+postgres = ["asyncpg>=0.29"]
+sqlite = ["aiosqlite>=0.20"]
+demo = ["uvicorn[standard]>=0.27", "aiosqlite>=0.20"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "ruff>=0.4",
+    "mypy>=1.9",
+    "aiosqlite>=0.20",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["sentinelapi"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+disallow_untyped_defs = true

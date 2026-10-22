@@ -63,7 +63,13 @@ def test_domain_imports_only_the_standard_library() -> None:  # AR-01
 def test_detectors_import_only_the_standard_library_pyjwt_and_the_domain() -> None:  # AR-02
     files = sorted((PACKAGE / "detectors").rglob("*.py"))
     assert files
-    allowed = ("jwt", "sentinelapi.domain", "sentinelapi.storage.backend", "sentinelapi.detectors")
+    allowed = (
+        "jwt",
+        "sentinelapi.clock",
+        "sentinelapi.domain",
+        "sentinelapi.storage.backend",
+        "sentinelapi.detectors",
+    )
     assert violations(files, allowed) == []
 
 

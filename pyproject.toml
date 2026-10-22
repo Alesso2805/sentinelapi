@@ -72,10 +72,8 @@ select = ["E", "F", "I", "UP", "B", "TID251"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["TID251"]
-# Known AR-16 debt, each removed by the story named: SEN-17 (the clock), SEN-21 (the demo's tokens), SEN-23 (the audit model).
-"sentinelapi/domain/entities.py" = ["TID251"]  # SEN-17
-"sentinelapi/storage/memory_backend.py" = ["TID251"]  # SEN-17
-"sentinelapi/detectors/jwt_replay.py" = ["TID251"]  # SEN-17
+"sentinelapi/clock.py" = ["TID251"]
+# Known AR-16 debt, each removed by the story named: SEN-21 (the demo's tokens), SEN-23 (the audit model).
 "examples/demo_app/auth.py" = ["TID251"]  # SEN-21
 "sentinelapi/audit/models.py" = ["TID251"]  # SEN-23
 

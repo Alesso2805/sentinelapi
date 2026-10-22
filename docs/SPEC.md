@@ -52,7 +52,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Brute force | Two axes | Failures per fingerprint (MEDIUM 5, HIGH 10) and per username (HIGH 8, CRITICAL 15) in 15 minutes; a success clears both | Built (SEN-03) |
 | Brute force | A block that holds | Checked before the password; usernames normalized; a success clears only its own source | Planned (SEN-20, ADR-0005) |
 | Token replay | Single-use tokens | Only on `jwt_replay_paths`; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403 | Built (SEN-04); `exp` and `jti` required in SEN-21 |
-| Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory in SEN-17 |
+| Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory since SEN-17 |
 | Audit | Event log | Table `sentinel_security_events`; the demo's `GET /security/events` | Built (SEN-06); migrations SEN-23, privacy SEN-24, write path SEN-25, protected API SEN-26 |
 | Enforcement | Shadow mode | `SENTINEL_ENFORCE=false` logs and records without blocking | Built (SEN-07), untested until SEN-13 |
 | Integration | One-call installer | `install_sentinel(app, settings)`; pure ASGI middleware | Planned (SEN-22, ADR-0007) |
@@ -124,12 +124,12 @@ What each verdict means. Every "Target" cell is checked by a test in the story n
 
 ### Windows
 
-As built, the two backends disagree:
+Every backend counts in fixed windows: the first hit opens a window of `window_seconds`, and later hits never extend it (ADR-0002). One contract suite (AR-07) runs against each.
 
-- Redis counts in fixed windows: the TTL is set on the first hit only (`EXPIRE … NX`).
-- The memory backend moves the expiry forward on every hit, so a client that never pauses for a full window is never reset. A client sending one request every 2 s against a limit of 60 per 60 s is blocked at its 121st request, after 4 minutes (audit, probe 1).
+- Redis sets the TTL on the first hit only (`EXPIRE … NX`).
+- The memory backend does the same since SEN-17, and bounds its memory: expired keys are swept at most once a second, and past `max_keys` (100,000) the tenth closest to expiring is dropped.
 
-Target: a fixed window started by the first hit, in every backend, checked by one contract test suite (ADR-0002, SEN-17).
+Until SEN-17 the memory backend moved its expiry forward on every hit, so a client sending one request every 2 s against a limit of 60 per 60 s was blocked at its 121st request, after 4 minutes (audit, probe 1). That scenario is now a test.
 
 ### Verdicts
 

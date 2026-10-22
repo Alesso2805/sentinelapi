@@ -4,6 +4,7 @@ from sentinelapi.detectors.fingerprint import build_fingerprint
 from sentinelapi.detectors.rate_limiter import RateLimiter
 from sentinelapi.domain.entities import ThreatLevel, ThreatType
 from sentinelapi.storage.memory_backend import InMemoryBackend
+from tests.fakes import FakeClock
 
 
 class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
@@ -51,6 +52,17 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
         self.assertIsNone(await limiter.check(other_fp, "/api/widgets"))
+
+    async def test_a_client_under_its_limit_is_never_blocked(self) -> None:
+        """The audit's probe 1: one request every 2 s against 60 per 60 s,
+        half the allowed rate, used to be blocked after 4 minutes."""
+        clock = FakeClock()
+        limiter = RateLimiter(InMemoryBackend(clock=clock), max_requests=60, window_seconds=60)
+        events = []
+        for _ in range(600):  # 20 minutes
+            events.append(await limiter.check(self.fp, "/api/widgets"))
+            clock.advance(2)
+        self.assertEqual([e for e in events if e is not None], [])
 
 
 if __name__ == "__main__":

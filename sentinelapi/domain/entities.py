@@ -7,8 +7,7 @@ whatever web framework or storage backend it's wired into.
 
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -49,7 +48,7 @@ class SecurityEvent:
     fingerprint: RequestFingerprint
     path: str
     detail: str
-    occurred_at: float = field(default_factory=time.time)
+    occurred_at: float  # seconds since the epoch, from the detector's Clock (AR-16)
 
     def is_blocking(self) -> bool:
         return self.threat_level in (ThreatLevel.HIGH, ThreatLevel.CRITICAL)

@@ -115,7 +115,6 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 
 Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
 
-- **The in-memory backend, the default, never resets a busy client.** It moves its window forward on every hit, so a client that never pauses for a full window is eventually blocked, even well under its limit. The Redis backend counts correctly (SEN-17).
 - **Rate limits are keyed on the IP and the User-Agent.** A client that changes its User-Agent on every request is never limited, and behind a reverse proxy every client shares the proxy's address (SEN-19).
 - **Blocking starts past twice the configured limit** (SEN-18).
 - **A brute-force block does not stop the right password.** It only turns the failed login's 401 into a 403 (SEN-20).

@@ -52,9 +52,10 @@ class SecurityEventLog(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     threat_type: Mapped[str] = mapped_column(String(32), index=True)
     threat_level: Mapped[str] = mapped_column(String(16), index=True)
+    # Keyed hashes (sentinelapi/privacy.py), never the values themselves (ADR-0006, AR-13).
     fingerprint_key: Mapped[str] = mapped_column(String(32), index=True)
-    ip: Mapped[str] = mapped_column(String(64))
-    user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    client_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    subject_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     path: Mapped[str] = mapped_column(String(256))
     detail: Mapped[str] = mapped_column(String(512))
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)

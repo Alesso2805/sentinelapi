@@ -25,6 +25,11 @@ class SentinelSettings(BaseSettings):
     # The Postgres role the app connects as: `sentinel migrate` grants it INSERT and
     # SELECT on the audit table and nothing else, so the trail is append-only (AR-12)
     audit_app_role: str | None = None
+    # The key of the hashes that stand for addresses and accounts in the audit trail and
+    # the log (ADR-0006). Unset: a random key per process, so correlation stops at a restart
+    audit_hash_key: str | None = None
+    # `sentinel purge` deletes events older than this
+    audit_retention_days: int = 90
 
     # Proxies whose X-Forwarded-For is believed, as CIDRs (ADR-0004). Empty: no
     # proxy, so the direct peer is the client and the header is ignored.

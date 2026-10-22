@@ -147,6 +147,7 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` | `8` | Failed attempts against one account, from any source, its username trimmed and casefolded |
 | `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock`: the account is refused from every source until its window ends (so anyone who knows a username can lock its owner out that long). `signal`: events carry `challenge_required` for your app to ask for a CAPTCHA or MFA |
 | `SENTINEL_JWT_SECRET` | `change-me` | The key your app signs tokens with; the replay detector verifies with it. Set your own: production will refuse the default (SEN-27) |
+| `SENTINEL_AUDIT_HASH_KEY` | none | Key of the HMACs that stand for addresses, accounts and fingerprints in the audit trail and the log: correlatable, not reversible without it. Unset, a random key per process. `sentinel purge` deletes events older than `SENTINEL_AUDIT_RETENTION_DAYS` (90) |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay. Tokens there need `exp` and `jti`; a used `jti` is refused until the token expires |
 | `SENTINEL_ENFORCE` | `true` | `false` = log-only "shadow mode," useful before you trust it to block for real |
 
@@ -154,7 +155,7 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 
 Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
 
-- **The audit trail stores raw IP addresses** and, for brute force, the targeted username; the demo's `/security/events` needs no credentials; every event is one row, written inside the request (SEN-24, SEN-25, SEN-26).
+- **The demo's `/security/events` needs no credentials, and every event is one row, written inside the request** (SEN-25, SEN-26).
 
 ## Roadmap
 

@@ -48,6 +48,7 @@ class SecurityEvent:
     occurred_at: float  # seconds since the epoch, from the detector's Clock (AR-16)
     retry_after: float | None = None  # seconds until a block lifts, for the Retry-After header
     challenge_required: bool = False  # the app should ask for CAPTCHA or MFA (ADR-0005, signal mode)
+    subject: str | None = None  # an opaque id of the targeted account, never the username
 
     def is_blocking(self) -> bool:
         return self.threat_level in (ThreatLevel.HIGH, ThreatLevel.CRITICAL)

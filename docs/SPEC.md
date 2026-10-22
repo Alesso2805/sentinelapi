@@ -155,6 +155,7 @@ HIGH and CRITICAL block; LOW and MEDIUM are only logged and recorded.
 - **Middleware, enforcing and blocking:** 429 for rate limiting, 403 otherwise, with `{"detail": "Request blocked by SentinelAPI", "reason": "<threat_type>"}`. Since SEN-18 a 429 carries `Retry-After`, the seconds left in the window.
 - **Demo login:** since SEN-20, 429 with `Retry-After` and `{"detail": "Too many failed sign-in attempts. Try again later."}`, the same whether the account exists or not. Until then it was a 403 with `"Blocked by SentinelAPI: <detail>"`, which revealed the failure count and the username.
 - **Shadow mode** (`SENTINEL_ENFORCE=false`): the same events are logged and recorded; nothing is blocked.
+- **Request id** (SEN-30): every response carries `X-Request-ID`, the caller's own if it is 1 to 64 letters, digits, `.`, `_` or `-`, a new one otherwise; every log line of the request, security events included, carries it as `request_id`. In production the log lines are JSON.
 
 ## Data model
 
@@ -225,7 +226,7 @@ The demo app is not part of the library; it is how a visitor and the tests see t
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/health` | Public | Liveness; never rate limited (SEN-18) |
-| GET | `/ready` | Public | Redis and database reachable, 503 otherwise. Planned (SEN-30) |
+| GET | `/ready` | Public | `Readiness {status, checks}`: the counter backend answers and the audit database is reachable and migrated, each within 2 s; 503 otherwise. Never rate limited (SEN-30) |
 | POST | `/auth/login` | Public | JSON `{username, password}` → `{access_token, refresh_token}`; 401 wrong credentials; 429 with `Retry-After` while the source or the account is blocked (SEN-20) |
 | POST | `/auth/refresh` | Bearer refresh token | New pair; a replayed token is stopped by the middleware with 403 |
 | GET | `/me` | Bearer access token | `Me {user}` |

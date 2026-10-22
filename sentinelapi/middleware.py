@@ -21,11 +21,14 @@ call directly.
 from __future__ import annotations
 
 import math
+import re
+import uuid
 from collections.abc import Awaitable, Callable
 
+import structlog
 from starlette.datastructures import Headers
 from starlette.responses import JSONResponse, Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from sentinelapi.client_address import ClientResolver
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
@@ -34,6 +37,9 @@ from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, Threa
 from sentinelapi.logging_config import log_event, security_logger
 
 OnEvent = Callable[[SecurityEvent], Awaitable[None]]
+
+# A request id a caller may choose, so its own logs and ours line up; anything else is replaced.
+REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 
 class SentinelMiddleware:
@@ -62,6 +68,22 @@ class SentinelMiddleware:
             return
 
         headers = Headers(scope=scope)
+        incoming = headers.get("x-request-id", "")
+        request_id = incoming if REQUEST_ID.fullmatch(incoming) else uuid.uuid4().hex
+
+        async def send_with_request_id(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                message = {
+                    **message,
+                    "headers": [*message.get("headers", []), (b"x-request-id", request_id.encode())],
+                }
+            await send(message)
+
+        # Every log line of this request, security events included, carries its id (SEN-30).
+        with structlog.contextvars.bound_contextvars(request_id=request_id):
+            await self._dispatch(scope, receive, send_with_request_id, headers)
+
+    async def _dispatch(self, scope: Scope, receive: Receive, send: Send, headers: Headers) -> None:
         client = scope.get("client")
         fingerprint = self._client_resolver.fingerprint(
             peer=client[0] if client else None,

@@ -85,7 +85,7 @@ docker compose up --build --wait    # or: make up
 curl http://localhost:8000/health
 ```
 
-A `migrate` service creates the audit table as its owner and exits; the API starts after it and connects as a role that can only add and read audit rows. Only the API's port is published. `docker compose run --rm migrate sentinel purge` applies the retention period. On a server, `deploy/docker-compose.prod.yml` adds production settings, requires the secrets in `.env` and puts Caddy in front with HTTPS.
+A `migrate` service creates the audit table as its owner and exits; the API starts after it and connects as a role that can only add and read audit rows. Only the API's port is published. `docker compose run --rm migrate sentinel purge` applies the retention period. `/ready` answers 503 until Redis and the migrated database answer; every response carries an `X-Request-ID`, which every log line of that request carries too, in JSON in production. On a server, `deploy/docker-compose.prod.yml` adds production settings, requires the secrets in `.env` and puts Caddy in front with HTTPS.
 
 ### Local dev (in-memory backend + SQLite, zero external services)
 

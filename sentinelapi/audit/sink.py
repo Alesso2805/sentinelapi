@@ -142,6 +142,10 @@ class DatabaseAuditSink:
                 threat_type=threat_type, threat_level=threat_level, since=since, offset=offset, limit=limit
             )
 
+    async def ready(self) -> bool:
+        """Reachable, and migrated to this version's schema."""
+        return await migrate.current(self._database_url) == migrate.head()
+
     async def recent_critical(self, limit: int = 50) -> list[SecurityEventLog]:
         async with session_scope(self._sessions) as session:
             return await SecurityEventRepository(session, self._pseudonymize).recent_critical(limit=limit)

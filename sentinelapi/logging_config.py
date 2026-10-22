@@ -18,14 +18,18 @@ def configure_logging(json_output: bool = True) -> None:
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
     ]
-    renderer: structlog.typing.Processor = (
-        structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
+    # In JSON, a traceback is a field too, so a log aggregator keeps it with its line.
+    renderer: list[structlog.typing.Processor] = (
+        [structlog.processors.dict_tracebacks, structlog.processors.JSONRenderer()]
+        if json_output
+        else [structlog.dev.ConsoleRenderer()]
     )
 
     structlog.configure(
-        processors=[*shared_processors, renderer],
+        processors=[*shared_processors, *renderer],
         logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
-        cache_logger_on_first_use=True,
+        # Not cached, so configuring again (a second app, a test) takes effect at once.
+        cache_logger_on_first_use=False,
     )
     logging.basicConfig(level=logging.INFO)
 

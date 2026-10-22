@@ -53,6 +53,14 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
         self.assertIsNone(await limiter.check(other_fp, "/api/widgets"))
 
+    async def test_a_new_user_agent_does_not_reset_the_count(self) -> None:
+        """The audit's probe 3: 500 requests with a new User-Agent each used to raise no event."""
+        limiter = RateLimiter(self.backend, max_requests=5, window_seconds=60)
+        events = [
+            await limiter.check(build_fingerprint("203.0.113.7", f"ua-{i}"), "/api") for i in range(500)
+        ]
+        self.assertEqual(sum(e is not None for e in events), 495)
+
     async def test_a_client_under_its_limit_is_never_blocked(self) -> None:
         """The audit's probe 1: one request every 2 s against 60 per 60 s,
         half the allowed rate, used to be blocked after 4 minutes."""

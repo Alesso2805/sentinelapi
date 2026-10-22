@@ -38,7 +38,7 @@ class BruteForceDetector:
     async def record_failure(
         self, fingerprint: RequestFingerprint, username: str, path: str = "/login"
     ) -> SecurityEvent | None:
-        fp_key = f"bf:fp:{fingerprint.key}"
+        fp_key = f"bf:src:{fingerprint.client}"
         user_key = f"bf:user:{username}"
 
         fp_count = await self._backend.incr_with_expiry(fp_key, self._window_seconds)
@@ -88,5 +88,5 @@ class BruteForceDetector:
     async def record_success(self, fingerprint: RequestFingerprint, username: str) -> None:
         """Clear counters on a successful login so a legitimate user who
         mistyped their password a few times isn't left flagged."""
-        await self._backend.reset(f"bf:fp:{fingerprint.key}")
+        await self._backend.reset(f"bf:src:{fingerprint.client}")
         await self._backend.reset(f"bf:user:{username}")

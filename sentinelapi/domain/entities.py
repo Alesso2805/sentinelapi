@@ -28,14 +28,11 @@ class ThreatType(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class RequestFingerprint:
-    """Cheap, privacy-conscious identity for a request.
+    """Cheap, privacy-conscious identity for a request (see `fingerprint.py`)."""
 
-    We deliberately avoid storing raw IP + User-Agent long-term; callers are
-    expected to pass in an already-hashed identifier (see `fingerprint.py`).
-    """
-
-    key: str  # e.g. sha256(ip + ua + optional_user_id)[:32]
-    ip: str
+    key: str  # sha256(ip + ua + optional_user_id)[:32]: correlates events, never a limit key
+    ip: str  # the client's address, resolved through trusted proxies (ADR-0004)
+    client: str  # what limits count on: the address, IPv6 grouped by /64
     user_id: str | None = None
 
 

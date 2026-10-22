@@ -16,8 +16,8 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from sentinelapi.client_address import ClientResolver
 from sentinelapi.detectors.brute_force import BruteForceDetector
-from sentinelapi.detectors.fingerprint import build_fingerprint
 from sentinelapi.logging_config import security_logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -77,8 +77,10 @@ async def login(
     request: Request,
     detector: Annotated[BruteForceDetector, Depends(get_brute_force_detector)],
 ) -> TokenResponse:
-    fingerprint = build_fingerprint(
-        ip=request.client.host if request.client else "unknown",
+    resolver = cast(ClientResolver, request.app.state.client_resolver)
+    fingerprint = resolver.fingerprint(
+        peer=request.client.host if request.client else None,
+        forwarded_for=",".join(request.headers.getlist("x-forwarded-for")),
         user_agent=request.headers.get("user-agent", ""),
     )
 

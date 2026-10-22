@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from sentinelapi.client_address import ClientResolver
 from sentinelapi.detectors.brute_force import BruteForceDetector
 from sentinelapi.detectors.fingerprint import build_fingerprint
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
@@ -42,3 +43,9 @@ async def test_jwt_replay(token: str) -> None:
 @pytest.mark.parametrize("user_agent", HEADER_VALUES, ids=range(len(HEADER_VALUES)))
 def test_fingerprint(user_agent: str) -> None:
     assert len(build_fingerprint("203.0.113.7", user_agent).key) == 32
+
+
+@pytest.mark.parametrize("forwarded_for", HEADER_VALUES, ids=range(len(HEADER_VALUES)))
+def test_client_address(forwarded_for: str) -> None:
+    resolver = ClientResolver(["0.0.0.0/0", "::/0"])
+    assert isinstance(resolver.address("10.0.0.1", forwarded_for), str)

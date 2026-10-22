@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ipaddress
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +16,10 @@ class SentinelSettings(BaseSettings):
     # Audit log database (any SQLAlchemy async URL — sqlite+aiosqlite for
     # local/dev, postgresql+asyncpg for production)
     database_url: str = "sqlite+aiosqlite:///./sentinelapi_audit.db"
+
+    # Proxies whose X-Forwarded-For is believed, as CIDRs (ADR-0004). Empty: no
+    # proxy, so the direct peer is the client and the header is ignored.
+    trusted_proxies: tuple[str, ...] = ()
 
     # Rate limiting
     rate_limit_max_requests: int = 60
@@ -35,3 +42,10 @@ class SentinelSettings(BaseSettings):
 
     # If True, HIGH/CRITICAL events return 429/403 instead of just logging
     enforce: bool = True
+
+    @field_validator("trusted_proxies")
+    @classmethod
+    def _trusted_proxies_are_networks(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        for cidr in value:
+            ipaddress.ip_network(cidr.strip(), strict=False)  # ValueError names the bad entry
+        return value

@@ -11,7 +11,7 @@
 | Story | PRs | Result | Verification |
 | --- | --- | --- | --- |
 | SEN-17 | #10 | `sentinelapi/clock.py` (AR-16): detectors and the memory backend receive a `Clock`; `SecurityEvent.occurred_at` comes from it. The memory backend opens a window on the first hit and never extends it, sweeps expired keys at most once a second, and past `max_keys` drops the tenth closest to expiring, so a flood of new keys pays one sweep per batch | The contract suite's fixed-window test passes on both backends (its xfail is gone); new tests for probe 1 (600 requests, one every 2 s against 60 per 60 s: no event) and probe 6 (10,000 expired keys evicted), and for the key cap. 79 passed, 9 xfailed |
-| SEN-19 | — | — | — |
+| SEN-19 | #11 | `sentinelapi/client_address.py`: `ClientResolver` believes `X-Forwarded-For` only from `SENTINEL_TRUSTED_PROXIES`, walking it right to left; ports and brackets understood, garbage falls back to the peer. `RequestFingerprint.client` is the address, IPv6 grouped by /64 and IPv4-mapped IPv6 as IPv4; the rate limiter and the brute-force source axis count on it, never on the User-Agent. The middleware and the demo's login resolve the address the same way. Bad CIDRs fail at startup | Probe 3 is a test (500 requests with a new User-Agent each: 495 events); probe 9 is a test (behind a trusted proxy two clients keep their own limits); a forged header from an untrusted peer changes nothing; 13 resolver tests; hostile `X-Forwarded-For` values. 102 passed, 9 xfailed |
 | SEN-18 | — | — | — |
 | SEN-20 | — | — | — |
 | SEN-21 | — | — | — |

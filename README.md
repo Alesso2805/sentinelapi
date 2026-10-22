@@ -107,6 +107,7 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 |---|---|---|
 | `SENTINEL_BACKEND` | `memory` | `memory` (dev/single-process) or `redis` (production) |
 | `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window. Going over it is logged; requests are blocked only past twice this number, which SEN-18 changes |
+| `SENTINEL_TRUSTED_PROXIES` | `[]` | CIDRs of your reverse proxies. Their `X-Forwarded-For` is believed, right-most hop first; with none, the direct peer is the client, so no header can choose its address |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` | `8` | Failed attempts against one account (any source) before blocking |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay |
 | `SENTINEL_ENFORCE` | `true` | `false` = log-only "shadow mode," useful before you trust it to block for real |
@@ -115,7 +116,6 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 
 Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
 
-- **Rate limits are keyed on the IP and the User-Agent.** A client that changes its User-Agent on every request is never limited, and behind a reverse proxy every client shares the proxy's address (SEN-19).
 - **Blocking starts past twice the configured limit** (SEN-18).
 - **A brute-force block does not stop the right password.** It only turns the failed login's 401 into a 403 (SEN-20).
 - **Usernames are counted as typed,** so changing their case splits the per-account count, and the account owner's successful login erases failures that came from other sources (SEN-20).

@@ -10,6 +10,18 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Alessandro David Polanco" }]
+classifiers = [
+    "Framework :: FastAPI",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
 
 dependencies = [
     "fastapi>=0.110",
@@ -26,13 +38,14 @@ redis = ["redis>=4.2"]
 postgres = ["asyncpg>=0.29"]
 sqlite = ["aiosqlite>=0.20"]
 demo = ["uvicorn[standard]>=0.27", "aiosqlite>=0.20"]
+
+[dependency-groups]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "httpx>=0.27",
     "ruff>=0.4",
     "mypy>=1.9",
-    "aiosqlite>=0.20",
 ]
 
 [tool.hatch.build.targets.wheel]

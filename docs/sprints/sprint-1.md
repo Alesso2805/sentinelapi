@@ -16,7 +16,7 @@
 
 | Story | PRs | Result | Verification |
 | --- | --- | --- | --- |
-| SEN-11 | #1 (first step) | — | — |
+| SEN-11 | #1, #4 | `uv.lock` (46 packages), dev tools in a dependency group, `.python-version` 3.12, classifiers for 3.11 to 3.15, a Makefile; the README installs with uv or pip | `uv sync --all-extras` then `uv run pytest`: 21 passed; `make check-imports` imports the library with no extra and no dev tool |
 | SEN-12 | — | — | — |
 | SEN-13 | — | — | — |
 | SEN-14 | — | — | — |

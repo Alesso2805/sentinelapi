@@ -59,7 +59,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
 | Demo | Demo app | Login, refresh, `/me`, `/health`, events | Built (SEN-08) |
 | Demo | Attack console | A page where a visitor runs each attack and watches the verdicts | Planned (SEN-32, ADR-0010) |
-| Operations | Compose stack | API, Redis 7, Postgres 16 | Built (SEN-08); the image does not start until SEN-11; migrations and a `migrate` service in SEN-29 |
+| Operations | Compose stack | API, Redis 7, Postgres 16; the API image is multi-stage, pinned (Python 3.12.15, uv 0.11.25), installs exactly `uv.lock`, runs as a non-root user and reports its health | Built (SEN-08, SEN-11, SEN-28); a `migrate` service of its own in SEN-29 |
 | Operations | Deployment | One server, Caddy, HTTPS | Planned (SEN-33, ADR-0009) |
 | Distribution | Package | Typed wheel on PyPI | Planned (SEN-36, ADR-0008) |
 

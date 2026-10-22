@@ -189,7 +189,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 
 | Variable | Default | Purpose | Status |
 | --- | --- | --- | --- |
-| `SENTINEL_BACKEND` | `memory` | `memory` or `redis`; any other value silently means memory today | Built; a typo fails from SEN-27 |
+| `SENTINEL_BACKEND` | `memory` | `memory` or `redis`; any other value fails at startup (it silently meant memory until SEN-27) | Built |
 | `SENTINEL_REDIS_URL` | `redis://localhost:6379/0` | Redis for counters | Built |
 | `SENTINEL_DATABASE_URL` | `sqlite+aiosqlite:///./sentinelapi_audit.db` | Audit database | Built |
 | `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window per client; the next one is blocked | Built; until SEN-18 blocking started past twice it |
@@ -197,12 +197,12 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_BRUTE_FORCE_WINDOW_SECONDS` | `900` | Brute-force window | Built |
 | `SENTINEL_BRUTE_FORCE_PER_SOURCE_MEDIUM` / `_HIGH` | `5` / `10` | Failures from one source | Built; named `…_PER_FINGERPRINT_…` until SEN-20 |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` / `_CRITICAL` | `8` / `15` | Failures against one account | Built |
-| `SENTINEL_JWT_SECRET` | `change-me` | Key that signs and verifies tokens | Built; the demo used a constant until SEN-21; production refuses the default in SEN-27 |
+| `SENTINEL_JWT_SECRET` | `change-me` | Key that signs and verifies tokens | Built; the demo used a constant until SEN-21; production refuses the example values and anything under 32 bytes (SEN-27) |
 | `SENTINEL_JWT_ALGORITHMS` | `["HS256"]` | Accepted algorithms; the demo signs with the first | Built; honored by the demo since SEN-21 |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for replay | Built |
 | `SENTINEL_ENFORCE` | `true` | `false` = shadow mode | Built |
-| `SENTINEL_ENV` | `development` | `production` turns on the refusals of SEN-27 | Planned (SEN-27) |
-| `SENTINEL_ALLOW_MEMORY_BACKEND` | `false` | Lets production run the memory backend, for a single process | Planned (SEN-27) |
+| `SENTINEL_ENV` | `development` | `production` refuses unsafe settings at startup, naming every one (AR-10) | Built (SEN-27) |
+| `SENTINEL_ALLOW_MEMORY_BACKEND` | `false` | Lets production run the memory backend, for a single process | Built (SEN-27) |
 | `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock` or `signal`: what the account axis does (ADR-0005) | Built (SEN-20) |
 | `SENTINEL_TRUSTED_PROXIES` | empty | CIDRs whose `X-Forwarded-For` is believed | Built (SEN-19) |
 | `SENTINEL_RATE_LIMIT_WARN_AT` | 80 % of the limit | MEDIUM threshold, logged once per window | Built (SEN-18) |
@@ -211,7 +211,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_JWT_AUDIENCE`, `SENTINEL_JWT_ISSUER` | empty | Checked when set | Built (SEN-21) |
 | `SENTINEL_AUDIT` | `true` | `false`: events only logged, no database | Built (SEN-22) |
 | `SENTINEL_AUDIT_APP_ROLE` | empty | Postgres role granted INSERT and SELECT only by `sentinel migrate` | Built (SEN-23) |
-| `SENTINEL_AUDIT_HASH_KEY` | none: a random key per process; required in production from SEN-27 | Key of the hashes that stand for addresses, accounts and fingerprints in the audit trail and the log | Built (SEN-24) |
+| `SENTINEL_AUDIT_HASH_KEY` | none: a random key per process; required in production, at least 32 bytes (SEN-27) | Key of the hashes that stand for addresses, accounts and fingerprints in the audit trail and the log | Built (SEN-24, SEN-27) |
 | `SENTINEL_AUDIT_RETENTION_DAYS` | `90` | What `sentinel purge` keeps | Built (SEN-24) |
 | `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Groups waiting to be written (past it, new ones are dropped and the drop logged); the window in which identical events become one row | Built (SEN-25) |
 | `SENTINEL_OPERATOR_TOKEN` | none: nobody reads the events | Bearer token of the demo's events API | Built (SEN-26) |

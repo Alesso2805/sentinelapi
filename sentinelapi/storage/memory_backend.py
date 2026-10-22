@@ -13,7 +13,8 @@ import time
 
 
 class InMemoryBackend:
-    """Thread-/task-safe counter store backed by a plain dict + asyncio.Lock."""
+    """Counter store backed by a plain dict. The asyncio.Lock makes it safe
+    across the tasks of one event loop, not across threads or processes."""
 
     def __init__(self) -> None:
         self._counters: dict[str, tuple[int, float]] = {}  # key -> (count, expires_at)

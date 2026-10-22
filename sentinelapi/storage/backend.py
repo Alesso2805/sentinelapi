@@ -12,15 +12,16 @@ from typing import Protocol
 
 
 class CounterBackend(Protocol):
-    """Sliding-window-friendly counter storage.
+    """Fixed-window counter storage (ADR-0002).
 
     Every method is `async` so a Redis-backed implementation can await the
     network call; `InMemoryBackend` just doesn't need to.
     """
 
     async def incr_with_expiry(self, key: str, window_seconds: int) -> int:
-        """Atomically increment `key` and ensure it expires after
-        `window_seconds` of inactivity. Returns the new count."""
+        """Atomically increment `key`. The first increment starts a window of
+        `window_seconds`; later increments do not extend it. Returns the new
+        count."""
         ...
 
     async def get(self, key: str) -> int:

@@ -2,7 +2,7 @@
 
 Oct 22, 2026 · Sources: [SPEC.md](SPEC.md), [BACKLOG.md](BACKLOG.md), [CLAUDE.md](../CLAUDE.md), the README, the module docstrings and [the ADRs](adr/).
 
-Each rule is one sentence that a test can prove or refute. A rule about "every" module, backend, setting or route is checked by a test that walks the whole list, so something new that breaks it fails without anyone adding a case. The tests do not exist yet: they are SEN-15. AR-16 to AR-18 were proposed rules until the product owner adopted them on 2026-10-22.
+Each rule is one sentence that a test can prove or refute. A rule about "every" module, backend, setting or route is checked by a test that walks the whole list, so something new that breaks it fails without anyone adding a case. Every rule has its test since SEN-15. A rule that does not hold yet is marked `xfail(strict=True)` with the story that fixes it, so CI stays green and the debt stays visible; when the fix lands, the strict marker fails CI until it is removed. AR-16's debt is a per-file exception in `pyproject.toml`, each with its story. AR-16 to AR-18 were proposed rules until the product owner adopted them on 2026-10-22.
 
 ## Rules
 
@@ -16,7 +16,7 @@ Each rule is one sentence that a test can prove or refute. A rule about "every" 
 | AR-06 | Every module of `sentinelapi`, except `storage.redis_backend`, imports in an environment that has only the required dependencies. | SPEC › Non-functional requirements › Reproducibility; ADR-0008 | CI job: `uv sync --frozen --no-dev` with no extras, then import every module found by `pkgutil.walk_packages`. |
 | AR-07 | Every implementation of `CounterBackend` passes the same contract suite: fixed windows started by the first hit, atomic increments under concurrency, `set_if_absent` true exactly once per key and TTL, and `reset` clearing both kinds of key. | README ("without a single line of detector code changing"); ADR-0002 | Pytest in `tests/contract/`: a fixture parametrized over every class in `sentinelapi.storage` that structurally implements the protocol, with Redis from CI's service, and an injectable clock. |
 | AR-08 | No detector raises on attacker-controlled input: malformed or oversized tokens, usernames and paths produce an event or `None`. | SPEC › Non-functional requirements ("a false negative over blocking someone"); `jwt_replay.py` catches token errors on purpose | Pytest: each detector's public method fed a fixed corpus (empty, 1 MB, non-UTF-8, control characters, malformed JWTs), asserting the return type. |
-| AR-09 | Every field of `SentinelSettings` appears in `.env.example` with its default. | README › Configuration ("see `.env.example`") | Pytest: iterate `SentinelSettings.model_fields` and parse `.env.example`. From SEN-37 the same test checks the README's configuration table. |
+| AR-09 | Every field of `SentinelSettings` appears in `.env.example`. | README › Configuration ("see `.env.example`") | Pytest: iterate `SentinelSettings.model_fields` and parse `.env.example`. From SEN-37 the same test checks the README's configuration table. |
 | AR-10 | With `SENTINEL_ENV=production`, the settings refuse a missing, example or short (under 32 bytes) JWT secret, a missing audit hash key, and the memory backend unless explicitly allowed. | SPEC › Non-functional requirements › Security; CLAUDE.md ("production refuses default secrets") | Pytest: build `SentinelSettings` for each bad case and expect a validation error. |
 | AR-11 | The audit table's SQLAlchemy model and its Alembic history describe the same schema, and the history is reversible on Postgres. | SPEC › Data model › Rules; ADR-0006 | Integration test on Postgres: `upgrade head`, `alembic check` reports nothing, then `downgrade base` → `upgrade head` with no table left behind. |
 | AR-12 | In the demo stack, the app's database role cannot UPDATE or DELETE rows of `sentinel_security_events`. | `audit/models.py` docstring ("append-only on purpose"); SPEC › Data model › Rules | Integration test on Postgres: connect as the app role and expect both statements to fail with a permission error. |
@@ -66,9 +66,9 @@ Alternatives considered: only Pytest with `ast` (no new dependency, but transiti
 | --- | --- |
 | `pyproject.toml` › `[tool.importlinter]` (`lint-imports`) | AR-04, AR-05 |
 | `tests/architecture/test_imports.py` | AR-01, AR-02, AR-03 |
-| CI job `import-without-extras` | AR-06 |
+| CI job "Imports with required dependencies only" (`scripts/check_imports.py`, also `make check-imports`) | AR-06 |
 | `tests/contract/test_counter_backends.py` | AR-07 |
-| `tests/unit/detectors/test_hostile_input.py` | AR-08 |
+| `tests/unit/test_hostile_input.py` | AR-08 |
 | `tests/architecture/test_settings_documented.py` | AR-09 |
 | `tests/unit/test_settings.py` | AR-10 |
 | `tests/integration/test_audit_migrations.py` | AR-11, AR-12 |
@@ -79,4 +79,4 @@ Alternatives considered: only Pytest with `ast` (no new dependency, but transiti
 | `tests/architecture/test_detectors.py` | AR-17 |
 | `tests/architecture/test_composition.py` | AR-18 |
 
-**Rules that will fail on the first run, on their own.** AR-07 (the memory backend's window), AR-10, AR-11, AR-12, AR-13, AR-14, AR-16 and AR-18. AR-06 fails today (greenlet) but passes once SEN-11, which comes first in Sprint 1, is merged. SEN-15 lands the tests with those rules marked `xfail` and the story that fixes each, so CI is green and the debt is visible; removing an `xfail` is part of the fixing story's DoD.
+**Rules that did not hold when SEN-15 landed**, each `xfail` (or, for AR-16, a per-file exception) until its story: AR-07 on the memory backend (SEN-17), AR-10 (SEN-27), AR-11 and AR-12 (SEN-23, which replaces their placeholders with checks on Postgres), AR-13 (SEN-24), AR-14 (SEN-26), AR-16 (SEN-17, SEN-21, SEN-23) and AR-18 (SEN-22). AR-06 failed on 2026-10-22 (greenlet) and held from #1. SEN-15 lands the tests with those rules marked `xfail` and the story that fixes each, so CI is green and the debt is visible; removing an `xfail` is part of the fixing story's DoD.

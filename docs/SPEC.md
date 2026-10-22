@@ -300,9 +300,9 @@ sentinelapi/
 ├── examples/demo_app/            # + attack console (SEN-32)
 ├── tests/
 │   ├── unit/
-│   ├── contract/                 # every CounterBackend (SEN-17)
+│   ├── contract/                 # every CounterBackend (AR-07)
 │   ├── integration/              # the demo app; Postgres from SEN-23
-│   └── architecture/             # AR-NN (SEN-15)
+│   └── architecture/             # AR-NN
 ├── benchmarks/                   # SEN-35
 ├── deploy/                       # docker-compose.prod.yml, Caddyfile (SEN-29, SEN-33)
 ├── docs/

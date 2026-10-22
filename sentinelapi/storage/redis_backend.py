@@ -44,4 +44,4 @@ class RedisBackend:
         await self._redis.delete(key)
 
     async def close(self) -> None:
-        await self._redis.close()
+        await self._redis.aclose()

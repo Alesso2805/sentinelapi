@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-redis = ["redis>=4.2"]
+redis = ["redis>=5.0.1"]
 postgres = ["asyncpg>=0.29"]
 sqlite = ["aiosqlite>=0.20"]
 demo = ["uvicorn[standard]>=0.27", "aiosqlite>=0.20"]
@@ -46,6 +46,7 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.4",
     "mypy>=1.9",
+    "import-linter>=2.15",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -60,7 +61,58 @@ line-length = 110
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "TID251"]
+
+# AR-16: time comes from a Clock (sentinelapi/clock.py), so windows and expiries are testable.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"time.time".msg = "Receive a Clock instead (AR-16)."
+"time.monotonic".msg = "Receive a Clock instead (AR-16)."
+"datetime.datetime.now".msg = "Receive a Clock instead (AR-16)."
+"datetime.datetime.utcnow".msg = "Receive a Clock instead (AR-16)."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["TID251"]
+# Known AR-16 debt, each removed by the story named: SEN-17 (the clock), SEN-21 (the demo's tokens), SEN-23 (the audit model).
+"sentinelapi/domain/entities.py" = ["TID251"]  # SEN-17
+"sentinelapi/storage/memory_backend.py" = ["TID251"]  # SEN-17
+"sentinelapi/detectors/jwt_replay.py" = ["TID251"]  # SEN-17
+"examples/demo_app/auth.py" = ["TID251"]  # SEN-21
+"sentinelapi/audit/models.py" = ["TID251"]  # SEN-23
+
+# AR-04 and AR-05, checked by `lint-imports`. Third-party packages are confined to the module that needs them.
+[tool.importlinter]
+root_packages = ["sentinelapi", "examples"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "AR-04: only the Redis backend imports redis"
+type = "forbidden"
+source_modules = ["sentinelapi"]
+forbidden_modules = ["redis"]
+allow_indirect_imports = true
+ignore_imports = ["sentinelapi.storage.redis_backend -> redis"]
+
+[[tool.importlinter.contracts]]
+name = "AR-04: only the audit package imports SQLAlchemy"
+type = "forbidden"
+source_modules = ["sentinelapi"]
+forbidden_modules = ["sqlalchemy"]
+allow_indirect_imports = true
+ignore_imports = ["sentinelapi.audit.** -> sqlalchemy"]
+
+[[tool.importlinter.contracts]]
+name = "AR-04: only the middleware imports Starlette or FastAPI"
+type = "forbidden"
+source_modules = ["sentinelapi"]
+forbidden_modules = ["starlette", "fastapi"]
+allow_indirect_imports = true
+ignore_imports = ["sentinelapi.middleware -> starlette"]
+
+[[tool.importlinter.contracts]]
+name = "AR-05: the library never imports the demo"
+type = "forbidden"
+source_modules = ["sentinelapi"]
+forbidden_modules = ["examples"]
 
 [tool.mypy]
 python_version = "3.11"

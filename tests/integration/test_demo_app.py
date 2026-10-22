@@ -1,51 +1,19 @@
 """End-to-end tests against the demo FastAPI app.
 
-Each test builds its own app, so it gets its own counters and its own
-SQLite database under pytest's `tmp_path`, with the lifespan run as
-uvicorn would run it.
+Each test builds its own app (see conftest.py), so it gets its own
+counters and its own SQLite database under pytest's `tmp_path`, with the
+lifespan run as uvicorn would run it.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from pathlib import Path
-from typing import Any
 
-import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
-from examples.demo_app.main import create_app
-from sentinelapi.config import SentinelSettings
+from .conftest import ClientFactory
 
 ALICE = {"username": "alice@example.com", "password": "correct-horse-battery-staple"}
-
-ClientFactory = Callable[..., AbstractAsyncContextManager[AsyncClient]]
-
-
-@pytest.fixture
-def make_client(tmp_path: Path) -> ClientFactory:
-    @asynccontextmanager
-    async def make(**overrides: Any) -> AsyncIterator[AsyncClient]:
-        settings = SentinelSettings(
-            _env_file=None,
-            backend="memory",
-            database_url=f"sqlite+aiosqlite:///{(tmp_path / 'audit.db').as_posix()}",
-            **overrides,
-        )
-        app = create_app(settings)
-        async with app.router.lifespan_context(app):
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-                yield client
-
-    return make
-
-
-@pytest.fixture
-async def client(make_client: ClientFactory) -> AsyncIterator[AsyncClient]:
-    async with make_client() as client:
-        yield client
 
 
 async def test_health_check(client: AsyncClient) -> None:

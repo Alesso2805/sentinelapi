@@ -16,7 +16,7 @@ dependencies = [
     "starlette>=0.36",
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
-    "sqlalchemy>=2.0",
+    "sqlalchemy[asyncio]>=2.0",
     "pyjwt>=2.7",
     "structlog>=24.1",
 ]

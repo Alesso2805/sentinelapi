@@ -10,6 +10,7 @@ stronger.
 
 from __future__ import annotations
 
+from sentinelapi.clock import SYSTEM_CLOCK, Clock
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType
 from sentinelapi.storage.backend import CounterBackend
 
@@ -24,8 +25,10 @@ class BruteForceDetector:
         per_fingerprint_high: int = 10,
         per_username_high: int = 8,
         per_username_critical: int = 15,
+        clock: Clock = SYSTEM_CLOCK,
     ) -> None:
         self._backend = backend
+        self._clock = clock
         self._window_seconds = window_seconds
         self._per_fingerprint_medium = per_fingerprint_medium
         self._per_fingerprint_high = per_fingerprint_high
@@ -50,6 +53,7 @@ class BruteForceDetector:
                 threat_level=ThreatLevel.CRITICAL,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail=f"{user_count} failed attempts against '{username}' from multiple sources",
             )
         if user_count >= self._per_username_high:
@@ -58,6 +62,7 @@ class BruteForceDetector:
                 threat_level=ThreatLevel.HIGH,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail=f"{user_count} failed attempts against '{username}' (possible credential stuffing)",
             )
         if fp_count >= self._per_fingerprint_high:
@@ -66,6 +71,7 @@ class BruteForceDetector:
                 threat_level=ThreatLevel.HIGH,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail=f"{fp_count} failed attempts from a single source",
             )
         if fp_count >= self._per_fingerprint_medium:
@@ -74,6 +80,7 @@ class BruteForceDetector:
                 threat_level=ThreatLevel.MEDIUM,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail=f"{fp_count} failed attempts from a single source",
             )
         return None

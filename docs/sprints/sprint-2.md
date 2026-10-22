@@ -10,7 +10,7 @@
 
 | Story | PRs | Result | Verification |
 | --- | --- | --- | --- |
-| SEN-17 | — | — | — |
+| SEN-17 | #10 | `sentinelapi/clock.py` (AR-16): detectors and the memory backend receive a `Clock`; `SecurityEvent.occurred_at` comes from it. The memory backend opens a window on the first hit and never extends it, sweeps expired keys at most once a second, and past `max_keys` drops the tenth closest to expiring, so a flood of new keys pays one sweep per batch | The contract suite's fixed-window test passes on both backends (its xfail is gone); new tests for probe 1 (600 requests, one every 2 s against 60 per 60 s: no event) and probe 6 (10,000 expired keys evicted), and for the key cap. 79 passed, 9 xfailed |
 | SEN-19 | — | — | — |
 | SEN-18 | — | — | — |
 | SEN-20 | — | — | — |

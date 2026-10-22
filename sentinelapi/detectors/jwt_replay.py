@@ -15,10 +15,9 @@ exchanged for a new one.
 
 from __future__ import annotations
 
-import time
-
 import jwt
 
+from sentinelapi.clock import SYSTEM_CLOCK, Clock
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType
 from sentinelapi.storage.backend import CounterBackend
 
@@ -32,8 +31,10 @@ class JWTReplayDetector:
         *,
         secret: str,
         algorithms: tuple[str, ...] = ("HS256",),
+        clock: Clock = SYSTEM_CLOCK,
     ) -> None:
         self._backend = backend
+        self._clock = clock
         self._secret = secret
         self._algorithms = list(algorithms)
 
@@ -48,6 +49,7 @@ class JWTReplayDetector:
                 threat_level=ThreatLevel.LOW,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail="expired token presented",
             )
         except jwt.InvalidTokenError as exc:
@@ -56,6 +58,7 @@ class JWTReplayDetector:
                 threat_level=ThreatLevel.MEDIUM,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail=f"invalid token signature/claims: {exc}",
             )
 
@@ -66,11 +69,12 @@ class JWTReplayDetector:
                 threat_level=ThreatLevel.MEDIUM,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail="token has no 'jti' claim; single-use cannot be enforced",
             )
 
         exp = payload.get("exp")
-        ttl_seconds = max(int(exp - time.time()), 1) if exp else DEFAULT_TTL_SECONDS
+        ttl_seconds = max(int(exp - self._clock.now()), 1) if exp else DEFAULT_TTL_SECONDS
 
         first_use = await self._backend.set_if_absent(f"jwt:jti:{jti}", fingerprint.key, ttl_seconds)
         if not first_use:
@@ -79,6 +83,7 @@ class JWTReplayDetector:
                 threat_level=ThreatLevel.CRITICAL,
                 fingerprint=fingerprint,
                 path=path,
+                occurred_at=self._clock.now(),
                 detail=f"token jti={jti[:8]}... was already redeemed \u2014 likely token theft",
             )
         return None

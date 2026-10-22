@@ -11,8 +11,6 @@ import importlib
 import inspect
 import pkgutil
 
-import pytest
-
 import sentinelapi.storage
 from sentinelapi.storage.backend import CounterBackend
 
@@ -41,11 +39,7 @@ async def test_unknown_keys_count_zero(backend: CounterBackend) -> None:
     assert await backend.get("never-seen") == 0
 
 
-async def test_the_window_starts_with_the_first_hit_and_is_not_extended(
-    backend: CounterBackend, request: pytest.FixtureRequest
-) -> None:
-    if "InMemoryBackend" in request.node.name:
-        request.applymarker(pytest.mark.xfail(strict=True, reason="SEN-17: every hit moves the window"))
+async def test_the_window_starts_with_the_first_hit_and_is_not_extended(backend: CounterBackend) -> None:
     assert await backend.incr_with_expiry("k", 1) == 1
     await asyncio.sleep(0.6)
     assert await backend.incr_with_expiry("k", 1) == 2

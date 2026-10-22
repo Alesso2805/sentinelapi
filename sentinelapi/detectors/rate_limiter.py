@@ -9,6 +9,7 @@ that has to stay cheap to run.
 
 from __future__ import annotations
 
+from sentinelapi.clock import SYSTEM_CLOCK, Clock
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType
 from sentinelapi.storage.backend import CounterBackend
 
@@ -20,8 +21,10 @@ class RateLimiter:
         *,
         max_requests: int = 60,
         window_seconds: int = 60,
+        clock: Clock = SYSTEM_CLOCK,
     ) -> None:
         self._backend = backend
+        self._clock = clock
         self._max_requests = max_requests
         self._window_seconds = window_seconds
 
@@ -39,5 +42,6 @@ class RateLimiter:
             threat_level=level,
             fingerprint=fingerprint,
             path=path,
+            occurred_at=self._clock.now(),
             detail=f"{count} requests in {self._window_seconds}s (limit {self._max_requests})",
         )

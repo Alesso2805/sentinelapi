@@ -4,14 +4,15 @@ Nothing in this module imports FastAPI, SQLAlchemy, or Redis on purpose:
 the detection logic should be provably correct on its own, independent of
 whatever web framework or storage backend it's wired into.
 """
+
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class ThreatLevel(str, Enum):
+class ThreatLevel(StrEnum):
     NONE = "none"
     LOW = "low"
     MEDIUM = "medium"
@@ -19,7 +20,7 @@ class ThreatLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class ThreatType(str, Enum):
+class ThreatType(StrEnum):
     RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
     BRUTE_FORCE = "brute_force"
     JWT_REPLAY = "jwt_replay"

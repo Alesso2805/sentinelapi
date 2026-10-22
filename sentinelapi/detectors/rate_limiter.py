@@ -6,6 +6,7 @@ enforcement) a fixed window with a short TTL catches the same bursts with
 one INCR instead of a log of timestamps — a good trade-off for a backend
 that has to stay cheap to run.
 """
+
 from __future__ import annotations
 
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType

@@ -38,7 +38,7 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         second = await self.detector.check(token, self.fp)
 
         self.assertIsNone(first)
-        self.assertIsNotNone(second)
+        assert second is not None
         self.assertEqual(second.threat_type, ThreatType.JWT_REPLAY)
         self.assertEqual(second.threat_level, ThreatLevel.CRITICAL)
 
@@ -52,14 +52,14 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         await self.detector.check(token, self.fp)
         event = await self.detector.check(token, attacker_fp)
 
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_level, ThreatLevel.CRITICAL)
 
     async def test_expired_token_is_flagged_low_not_replay(self) -> None:
         token = make_refresh_token(expires_in=-10)  # already expired
         event = await self.detector.check(token, self.fp)
 
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
         self.assertEqual(event.threat_level, ThreatLevel.LOW)
 
@@ -67,7 +67,7 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         token = make_refresh_token() + "tampered"
         event = await self.detector.check(token, self.fp)
 
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
 
     async def test_token_without_jti_cannot_be_verified_single_use(self) -> None:
@@ -75,7 +75,7 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         token = jwt.encode(payload, SECRET, algorithm="HS256")
 
         event = await self.detector.check(token, self.fp)
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
         self.assertIn("jti", event.detail)
 

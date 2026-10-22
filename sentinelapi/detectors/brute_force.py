@@ -7,6 +7,7 @@ username" misses a single attacker brute-forcing many accounts from one
 machine. So this detector tracks both and returns whichever signal is
 stronger.
 """
+
 from __future__ import annotations
 
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType

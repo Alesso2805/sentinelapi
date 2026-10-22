@@ -23,7 +23,7 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
 
         event = await limiter.check(self.fp, "/api/widgets")
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_type, ThreatType.RATE_LIMIT_EXCEEDED)
         self.assertEqual(event.threat_level, ThreatLevel.MEDIUM)
 
@@ -32,7 +32,7 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         event = None
         for _ in range(10):
             event = await limiter.check(self.fp, "/api/widgets")
-        self.assertIsNotNone(event)
+        assert event is not None
         self.assertEqual(event.threat_level, ThreatLevel.HIGH)
 
     async def test_limits_are_isolated_per_path(self) -> None:
@@ -42,7 +42,7 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         event_a = await limiter.check(self.fp, "/api/widgets")
         event_b = await limiter.check(self.fp, "/api/gadgets")
 
-        self.assertIsNotNone(event_a)  # third hit on /widgets: over the limit
+        assert event_a is not None  # third hit on /widgets: over the limit
         self.assertIsNone(event_b)  # first hit on /gadgets: fresh counter
 
     async def test_limits_are_isolated_per_fingerprint(self) -> None:

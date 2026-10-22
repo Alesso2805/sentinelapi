@@ -4,11 +4,13 @@ Password hashing here is sha256+salt purely so this demo has zero extra
 dependencies. Use passlib/bcrypt or argon2 for real password storage —
 sha256 alone is not an acceptable password hash in production.
 """
+
 from __future__ import annotations
 
 import hashlib
 import time
 import uuid
+from typing import Annotated, cast
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -53,7 +55,12 @@ def _issue_tokens(username: str) -> TokenResponse:
         algorithm="HS256",
     )
     refresh = jwt.encode(
-        {"sub": username, "type": "refresh", "jti": str(uuid.uuid4()), "exp": now + REFRESH_TOKEN_TTL_SECONDS},
+        {
+            "sub": username,
+            "type": "refresh",
+            "jti": str(uuid.uuid4()),
+            "exp": now + REFRESH_TOKEN_TTL_SECONDS,
+        },
         JWT_SECRET,
         algorithm="HS256",
     )
@@ -61,14 +68,14 @@ def _issue_tokens(username: str) -> TokenResponse:
 
 
 def get_brute_force_detector(request: Request) -> BruteForceDetector:
-    return request.app.state.brute_force_detector
+    return cast(BruteForceDetector, request.app.state.brute_force_detector)
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
     payload: LoginRequest,
     request: Request,
-    detector: BruteForceDetector = Depends(get_brute_force_detector),
+    detector: Annotated[BruteForceDetector, Depends(get_brute_force_detector)],
 ) -> TokenResponse:
     fingerprint = build_fingerprint(
         ip=request.client.host if request.client else "unknown",

@@ -12,6 +12,7 @@ particular is one of the strongest signals of token theft there is —
 it means someone has a copy of a token the legitimate client already
 exchanged for a new one.
 """
+
 from __future__ import annotations
 
 import time

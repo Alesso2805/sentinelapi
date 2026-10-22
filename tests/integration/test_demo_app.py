@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import jwt
 from httpx import AsyncClient
 
 from .conftest import ClientFactory
@@ -132,3 +133,21 @@ async def test_clients_behind_a_trusted_proxy_get_their_own_limits(make_client: 
         assert (await client.get("/api/widgets", headers=noisy)).status_code == 429
         quiet = await client.get("/api/widgets", headers={"X-Forwarded-For": "203.0.113.67"})
         assert quiet.status_code == 404
+
+
+async def test_tokens_are_signed_with_the_configured_secret(client: AsyncClient) -> None:
+    """SEN-21: the demo used a constant and ignored SENTINEL_JWT_SECRET."""
+    login = await client.post("/auth/login", json=ALICE)
+    assert (
+        await client.get("/me", headers={"Authorization": f"Bearer {login.json()['access_token']}"})
+    ).json() == {"user": "alice@example.com"}
+    forged = jwt.encode({"sub": "alice@example.com", "exp": 9_999_999_999}, "change-me", algorithm="HS256")
+    assert (await client.get("/me", headers={"Authorization": f"Bearer {forged}"})).status_code == 401
+
+
+async def test_audience_and_issuer_travel_end_to_end(make_client: ClientFactory) -> None:
+    async with make_client(jwt_audience="sentinel-demo", jwt_issuer="https://sentinel.example") as client:
+        login = await client.post("/auth/login", json=ALICE)
+        headers = {"Authorization": f"Bearer {login.json()['refresh_token']}"}
+        assert (await client.post("/auth/refresh", headers=headers)).status_code == 200
+        assert (await client.post("/auth/refresh", headers=headers)).status_code == 403

@@ -11,17 +11,21 @@ links, magic-login links. A reused (already-rotated) refresh token in
 particular is one of the strongest signals of token theft there is —
 it means someone has a copy of a token the legitimate client already
 exchanged for a new one.
+
+A used `jti` is remembered until the token's own `exp`, so a token is
+refused for as long as it would otherwise be valid. That is why `exp` is
+required: without it there is no "as long as" to remember.
 """
 
 from __future__ import annotations
+
+import math
 
 import jwt
 
 from sentinelapi.clock import SYSTEM_CLOCK, Clock
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent, ThreatLevel, ThreatType
 from sentinelapi.storage.backend import CounterBackend
-
-DEFAULT_TTL_SECONDS = 3600
 
 
 class JWTReplayDetector:
@@ -31,51 +35,39 @@ class JWTReplayDetector:
         *,
         secret: str,
         algorithms: tuple[str, ...] = ("HS256",),
+        audience: str | None = None,
+        issuer: str | None = None,
         clock: Clock = SYSTEM_CLOCK,
     ) -> None:
         self._backend = backend
         self._clock = clock
         self._secret = secret
         self._algorithms = list(algorithms)
+        self._audience = audience
+        self._issuer = issuer
 
     async def check(
         self, token: str, fingerprint: RequestFingerprint, path: str = "/refresh"
     ) -> SecurityEvent | None:
         try:
-            payload = jwt.decode(token, self._secret, algorithms=self._algorithms)
+            payload = jwt.decode(
+                token,
+                self._secret,
+                algorithms=self._algorithms,
+                audience=self._audience,
+                issuer=self._issuer,
+                options={"require": ["exp", "jti"]},
+            )
         except jwt.ExpiredSignatureError:
-            return SecurityEvent(
-                threat_type=ThreatType.JWT_INVALID,
-                threat_level=ThreatLevel.LOW,
-                fingerprint=fingerprint,
-                path=path,
-                occurred_at=self._clock.now(),
-                detail="expired token presented",
-            )
+            return self._event(fingerprint, path, ThreatLevel.LOW, "expired token presented")
         except jwt.InvalidTokenError as exc:
-            return SecurityEvent(
-                threat_type=ThreatType.JWT_INVALID,
-                threat_level=ThreatLevel.MEDIUM,
-                fingerprint=fingerprint,
-                path=path,
-                occurred_at=self._clock.now(),
-                detail=f"invalid token signature/claims: {exc}",
-            )
+            return self._event(fingerprint, path, ThreatLevel.MEDIUM, f"invalid token: {exc}")
 
-        jti = payload.get("jti")
-        if not jti:
-            return SecurityEvent(
-                threat_type=ThreatType.JWT_INVALID,
-                threat_level=ThreatLevel.MEDIUM,
-                fingerprint=fingerprint,
-                path=path,
-                occurred_at=self._clock.now(),
-                detail="token has no 'jti' claim; single-use cannot be enforced",
-            )
+        jti, exp = payload["jti"], payload["exp"]
+        if not isinstance(jti, str) or not jti:
+            return self._event(fingerprint, path, ThreatLevel.MEDIUM, "invalid token: 'jti' is not a string")
 
-        exp = payload.get("exp")
-        ttl_seconds = max(int(exp - self._clock.now()), 1) if exp else DEFAULT_TTL_SECONDS
-
+        ttl_seconds = max(math.ceil(exp - self._clock.now()), 1)
         first_use = await self._backend.set_if_absent(f"jwt:jti:{jti}", fingerprint.key, ttl_seconds)
         if not first_use:
             return SecurityEvent(
@@ -84,6 +76,18 @@ class JWTReplayDetector:
                 fingerprint=fingerprint,
                 path=path,
                 occurred_at=self._clock.now(),
-                detail=f"token jti={jti[:8]}... was already redeemed \u2014 likely token theft",
+                detail=f"token jti={jti[:8]}... was already redeemed — likely token theft",
             )
         return None
+
+    def _event(
+        self, fingerprint: RequestFingerprint, path: str, level: ThreatLevel, detail: str
+    ) -> SecurityEvent:
+        return SecurityEvent(
+            threat_type=ThreatType.JWT_INVALID,
+            threat_level=level,
+            fingerprint=fingerprint,
+            path=path,
+            occurred_at=self._clock.now(),
+            detail=detail,
+        )

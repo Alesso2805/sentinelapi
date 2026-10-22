@@ -9,22 +9,22 @@ from __future__ import annotations
 
 import hashlib
 import math
-import time
 import uuid
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from sentinelapi.client_address import ClientResolver
+from sentinelapi.clock import SYSTEM_CLOCK
+from sentinelapi.config import SentinelSettings
 from sentinelapi.detectors.brute_force import BruteForceDetector
 from sentinelapi.domain.entities import SecurityEvent
 from sentinelapi.logging_config import security_logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-JWT_SECRET = "change-me"  # override via SentinelSettings.jwt_secret / env in real use
 ACCESS_TOKEN_TTL_SECONDS = 15 * 60
 REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60
 
@@ -49,24 +49,41 @@ class TokenResponse(BaseModel):
     refresh_token: str
 
 
-def _issue_tokens(username: str) -> TokenResponse:
-    now = int(time.time())
+def _issue_tokens(settings: SentinelSettings, username: str) -> TokenResponse:
+    """Signed with SENTINEL_JWT_SECRET, the key the replay detector verifies with."""
+    now = int(SYSTEM_CLOCK.now())
+    claims: dict[str, Any] = {"sub": username}
+    if settings.jwt_audience:
+        claims["aud"] = settings.jwt_audience
+    if settings.jwt_issuer:
+        claims["iss"] = settings.jwt_issuer
+    algorithm = settings.jwt_algorithms[0]
     access = jwt.encode(
-        {"sub": username, "type": "access", "exp": now + ACCESS_TOKEN_TTL_SECONDS},
-        JWT_SECRET,
-        algorithm="HS256",
+        {**claims, "type": "access", "exp": now + ACCESS_TOKEN_TTL_SECONDS},
+        settings.jwt_secret,
+        algorithm=algorithm,
     )
     refresh = jwt.encode(
-        {
-            "sub": username,
-            "type": "refresh",
-            "jti": str(uuid.uuid4()),
-            "exp": now + REFRESH_TOKEN_TTL_SECONDS,
-        },
-        JWT_SECRET,
-        algorithm="HS256",
+        {**claims, "type": "refresh", "jti": str(uuid.uuid4()), "exp": now + REFRESH_TOKEN_TTL_SECONDS},
+        settings.jwt_secret,
+        algorithm=algorithm,
     )
     return TokenResponse(access_token=access, refresh_token=refresh)
+
+
+def decode_token(settings: SentinelSettings, token: str) -> dict[str, Any]:
+    payload: dict[str, Any] = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=list(settings.jwt_algorithms),
+        audience=settings.jwt_audience,
+        issuer=settings.jwt_issuer,
+    )
+    return payload
+
+
+def get_settings(request: Request) -> SentinelSettings:
+    return cast(SentinelSettings, request.app.state.settings)
 
 
 def get_brute_force_detector(request: Request) -> BruteForceDetector:
@@ -78,6 +95,7 @@ async def login(
     payload: LoginRequest,
     request: Request,
     detector: Annotated[BruteForceDetector, Depends(get_brute_force_detector)],
+    settings: Annotated[SentinelSettings, Depends(get_settings)],
 ) -> TokenResponse:
     resolver = cast(ClientResolver, request.app.state.client_resolver)
     fingerprint = resolver.fingerprint(
@@ -99,7 +117,7 @@ async def login(
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     await detector.record_success(fingerprint, payload.username)
-    return _issue_tokens(payload.username)
+    return _issue_tokens(settings, payload.username)
 
 
 async def _refuse_if_blocking(request: Request, event: SecurityEvent | None) -> None:
@@ -126,7 +144,9 @@ async def _refuse_if_blocking(request: Request, event: SecurityEvent | None) -> 
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(request: Request) -> TokenResponse:
+async def refresh(
+    request: Request, settings: Annotated[SentinelSettings, Depends(get_settings)]
+) -> TokenResponse:
     """No replay check here on purpose: SentinelMiddleware already ran
     JWTReplayDetector against this exact path (it's in jwt_replay_paths)
     before the request ever reached this handler. If we're executing this
@@ -135,11 +155,11 @@ async def refresh(request: Request) -> TokenResponse:
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else ""
 
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        payload = decode_token(settings, token)
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token") from None
 
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Not a refresh token")
 
-    return _issue_tokens(payload["sub"])
+    return _issue_tokens(settings, payload["sub"])

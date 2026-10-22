@@ -8,6 +8,7 @@ from sentinelapi.detectors.fingerprint import build_fingerprint
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
 from sentinelapi.domain.entities import ThreatLevel, ThreatType
 from sentinelapi.storage.memory_backend import InMemoryBackend
+from tests.fakes import FakeClock
 
 SECRET = "test-secret-do-not-use-in-production-0123456789"
 
@@ -78,6 +79,43 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         assert event is not None
         self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
         self.assertIn("jti", event.detail)
+
+    async def test_a_token_without_exp_is_flagged(self) -> None:
+        """SEN-21: a token without `exp` used to be remembered for one hour only."""
+        token = jwt.encode({"sub": "user-123", "jti": str(uuid.uuid4())}, SECRET, algorithm="HS256")
+        event = await self.detector.check(token, self.fp)
+        assert event is not None
+        self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
+        self.assertIn("exp", event.detail)
+
+    async def test_a_used_token_is_refused_for_its_whole_life(self) -> None:
+        clock = FakeClock()
+        detector = JWTReplayDetector(InMemoryBackend(clock=clock), secret=SECRET, clock=clock)
+        token = make_refresh_token(expires_in=7 * 24 * 3600)
+        self.assertIsNone(await detector.check(token, self.fp))
+        clock.advance(2 * 3600)  # past the hour a token used to be remembered for
+        event = await detector.check(token, self.fp)
+        assert event is not None
+        self.assertEqual(event.threat_type, ThreatType.JWT_REPLAY)
+
+    async def test_a_jti_that_is_not_a_string_is_flagged(self) -> None:
+        token = jwt.encode({"jti": 42, "exp": int(time.time()) + 60}, SECRET, algorithm="HS256")
+        event = await self.detector.check(token, self.fp)
+        assert event is not None
+        self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
+
+    async def test_audience_and_issuer_are_checked_when_set(self) -> None:
+        detector = JWTReplayDetector(InMemoryBackend(), secret=SECRET, audience="demo", issuer="sentinel")
+
+        def token(**claims: object) -> str:
+            payload = {"jti": str(uuid.uuid4()), "exp": int(time.time()) + 60, **claims}
+            return jwt.encode(payload, SECRET, algorithm="HS256")
+
+        self.assertIsNone(await detector.check(token(aud="demo", iss="sentinel"), self.fp))
+        for wrong in (token(aud="other", iss="sentinel"), token(aud="demo", iss="other"), token()):
+            event = await detector.check(wrong, self.fp)
+            assert event is not None
+            self.assertEqual(event.threat_type, ThreatType.JWT_INVALID)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from examples.demo_app.main import create_app
 from sentinelapi.config import SentinelSettings
 
+TEST_JWT_SECRET = "integration-test-secret-0123456789abcdef"
+
 ClientFactory = Callable[..., AbstractAsyncContextManager[AsyncClient]]
 
 
@@ -21,6 +23,7 @@ def make_client(tmp_path: Path) -> ClientFactory:
         settings = SentinelSettings(
             _env_file=None,
             backend="memory",
+            jwt_secret=TEST_JWT_SECRET,
             database_url=f"sqlite+aiosqlite:///{(tmp_path / 'audit.db').as_posix()}",
             **overrides,
         )

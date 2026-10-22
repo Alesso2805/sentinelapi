@@ -1,10 +1,9 @@
 """Redis implementation of CounterBackend, for production use.
 
 Requires the `redis` package (redis-py's asyncio client, redis>=4.2).
-Not exercised by the test suite in this environment — it has no network
-access to run a Redis server — but it implements the exact same
-`CounterBackend` protocol as `InMemoryBackend`, so the detectors don't
-know or care which one they're talking to.
+It implements the same `CounterBackend` protocol as `InMemoryBackend`, so
+the detectors don't know or care which one they're talking to, and
+tests/contract runs the same suite against both.
 """
 
 from __future__ import annotations
@@ -15,11 +14,10 @@ from redis.asyncio import Redis
 class RedisBackend:
     """Atomic, multi-process-safe counters via Redis.
 
-    Uses INCR + EXPIRE for sliding-window counters (a fixed-window
-    approximation — good enough for abuse detection, where the cost of
-    occasionally under-counting by one window boundary is far lower than
-    the cost of a stateful sliding-log implementation) and SET NX EX for
-    the JWT-replay "have I seen this jti before" check.
+    Uses INCR + EXPIRE NX for fixed-window counters (ADR-0002: good enough
+    for abuse detection, where the cost of occasionally under-counting at a
+    window boundary is far lower than the cost of a stateful sliding log)
+    and SET NX EX for the JWT-replay "have I seen this jti before" check.
     """
 
     def __init__(self, redis_url: str) -> None:

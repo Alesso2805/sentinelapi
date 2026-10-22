@@ -1,7 +1,7 @@
 """Framework-agnostic domain types for SentinelAPI.
 
 Nothing in this module imports FastAPI, SQLAlchemy, or Redis on purpose:
-the detection logic should be provably correct on its own, independent of
+the detection logic should be testable on its own, independent of
 whatever web framework or storage backend it's wired into.
 """
 

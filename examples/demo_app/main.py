@@ -20,6 +20,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from sentinelapi.audit.db import create_engine_and_sessionmaker, init_models, session_scope
 from sentinelapi.audit.repository import SecurityEventRepository
+from sentinelapi.client_address import ClientResolver
 from sentinelapi.config import SentinelSettings
 from sentinelapi.detectors.brute_force import BruteForceDetector
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
@@ -80,8 +81,10 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
         per_username_critical=settings.brute_force_per_username_critical,
     )
     jwt_replay_detector = JWTReplayDetector(backend, secret=JWT_SECRET)
+    client_resolver = ClientResolver(settings.trusted_proxies)
 
     app.state.brute_force_detector = brute_force_detector
+    app.state.client_resolver = client_resolver
     app.state.persist_event = persist_event
 
     app.add_middleware(
@@ -91,6 +94,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
         jwt_replay_paths=settings.jwt_replay_paths,
         enforce=settings.enforce,
         on_event=persist_event,
+        client_resolver=client_resolver,
     )
 
     app.include_router(auth_router)

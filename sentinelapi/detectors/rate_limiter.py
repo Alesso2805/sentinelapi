@@ -29,7 +29,7 @@ class RateLimiter:
         self._window_seconds = window_seconds
 
     async def check(self, fingerprint: RequestFingerprint, path: str) -> SecurityEvent | None:
-        key = f"rl:{fingerprint.key}:{path}"
+        key = f"rl:{fingerprint.client}:{path}"
         count = await self._backend.incr_with_expiry(key, self._window_seconds)
 
         if count <= self._max_requests:

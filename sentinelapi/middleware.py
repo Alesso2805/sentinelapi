@@ -22,7 +22,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
-from sentinelapi.detectors.fingerprint import build_fingerprint
+from sentinelapi.client_address import ClientResolver
 from sentinelapi.detectors.jwt_replay import JWTReplayDetector
 from sentinelapi.detectors.rate_limiter import RateLimiter
 from sentinelapi.domain.entities import RequestFingerprint, SecurityEvent
@@ -41,8 +41,10 @@ class SentinelMiddleware(BaseHTTPMiddleware):
         jwt_replay_paths: tuple[str, ...] = (),
         enforce: bool = True,
         on_event: OnEvent | None = None,
+        client_resolver: ClientResolver | None = None,
     ) -> None:
         super().__init__(app)
+        self._client_resolver = client_resolver or ClientResolver()
         self._rate_limiter = rate_limiter
         self._jwt_replay_detector = jwt_replay_detector
         self._jwt_replay_paths = set(jwt_replay_paths)
@@ -50,8 +52,9 @@ class SentinelMiddleware(BaseHTTPMiddleware):
         self._on_event = on_event
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        fingerprint = build_fingerprint(
-            ip=request.client.host if request.client else "unknown",
+        fingerprint = self._client_resolver.fingerprint(
+            peer=request.client.host if request.client else None,
+            forwarded_for=",".join(request.headers.getlist("x-forwarded-for")),
             user_agent=request.headers.get("user-agent", ""),
         )
 

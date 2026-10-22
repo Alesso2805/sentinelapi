@@ -93,3 +93,25 @@ async def test_blocking_events_reach_the_audit_trail(client: AsyncClient, tmp_pa
         ("jwt_replay", "critical", "/auth/refresh")
     ]
     assert (tmp_path / "audit.db").exists()
+
+
+async def test_forwarded_for_from_an_untrusted_peer_is_ignored(client: AsyncClient) -> None:
+    # With no trusted proxy, every request below comes from the same client,
+    # whatever address it claims.
+    statuses = [
+        (await client.get("/health", headers={"X-Forwarded-For": f"198.51.100.{i % 250}"})).status_code
+        for i in range(125)
+    ]
+    assert statuses[-1] == 429
+
+
+async def test_clients_behind_a_trusted_proxy_get_their_own_limits(make_client: ClientFactory) -> None:
+    """The audit's probe 9: behind a proxy, every client used to share the proxy's bucket."""
+    # httpx's ASGI transport presents every request as coming from 127.0.0.1: here, the proxy.
+    async with make_client(trusted_proxies=["127.0.0.1/32"]) as client:
+        noisy = {"X-Forwarded-For": "203.0.113.66"}
+        for _ in range(125):
+            await client.get("/health", headers=noisy)
+        assert (await client.get("/health", headers=noisy)).status_code == 429
+        quiet = await client.get("/health", headers={"X-Forwarded-For": "203.0.113.67"})
+        assert quiet.status_code == 200

@@ -46,9 +46,9 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 
 | Area | Feature | Detail | Status |
 | --- | --- | --- | --- |
-| Rate limiting | Per-client limit | Fixed window of `rate_limit_window_seconds`, keyed on fingerprint + path; over the limit → MEDIUM, logged; past twice the limit → HIGH, 429 | Built (SEN-02); blocks right after the limit in SEN-18; keyed on the client's address in SEN-19 |
+| Rate limiting | Per-client limit | Fixed window of `rate_limit_window_seconds`, keyed on the client's address + path since SEN-19; over the limit → MEDIUM, logged; past twice the limit → HIGH, 429 | Built (SEN-02, SEN-19); blocks right after the limit in SEN-18 |
 | Rate limiting | `Retry-After`, exempt paths, stricter limits per path prefix | | Planned (SEN-18) |
-| Rate limiting | Client address behind a proxy | Trusted proxies and `X-Forwarded-For` | Planned (SEN-19, ADR-0004) |
+| Rate limiting | Client address behind a proxy | Trusted proxies and `X-Forwarded-For`; IPv6 grouped by /64 | Built (SEN-19, ADR-0004) |
 | Brute force | Two axes | Failures per fingerprint (MEDIUM 5, HIGH 10) and per username (HIGH 8, CRITICAL 15) in 15 minutes; a success clears both | Built (SEN-03) |
 | Brute force | A block that holds | Checked before the password; usernames normalized; a success clears only its own source | Planned (SEN-20, ADR-0005) |
 | Token replay | Single-use tokens | Only on `jwt_replay_paths`; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403 | Built (SEN-04); `exp` and `jti` required in SEN-21 |
@@ -117,10 +117,10 @@ What each verdict means. Every "Target" cell is checked by a test in the story n
 
 | | As built | Target |
 | --- | --- | --- |
-| Client address | `request.client.host`. Behind a proxy it is the proxy's address, so every client shares it (seen live as the Docker gateway, `192.168.96.1`) | The right-most `X-Forwarded-For` hop that is not in `SENTINEL_TRUSTED_PROXIES`, used only when the direct peer is a trusted proxy; IPv6 grouped by /64 (SEN-19, ADR-0004) |
-| Fingerprint | SHA-256 of the address, the User-Agent and the user id, first 32 hex characters | The same, used to correlate events in the audit trail, never as a limit key (SEN-19) |
-| Rate-limit key | Fingerprint + exact path: a new User-Agent or a new path starts a new counter | Client address, plus one counter per configured path prefix (SEN-18, SEN-19) |
-| Brute-force keys | Fingerprint; the username exactly as typed | Client address; the username normalized (trim, casefold), with the normalizer replaceable (SEN-20) |
+| Client address | Since SEN-19: the direct peer; behind a trusted proxy (`SENTINEL_TRUSTED_PROXIES`), the right-most `X-Forwarded-For` hop no trusted proxy wrote. Before, `request.client.host`: the proxy's address behind one, so every client shared it (seen live as the Docker gateway) | Done (SEN-19, ADR-0004) |
+| Fingerprint | SHA-256 of the address, the User-Agent and the user id, first 32 hex characters; since SEN-19 it only correlates events in the audit trail | Done (SEN-19) |
+| Rate-limit key | Since SEN-19 the client's address (IPv6 by /64) + exact path, so a new User-Agent no longer opens a new counter; a new path still does | Client address, plus one counter per configured path prefix (SEN-18) |
+| Brute-force keys | Since SEN-19 the client's address for the source axis; the username exactly as typed | The username normalized (trim, casefold), with the normalizer replaceable (SEN-20) |
 
 ### Windows
 
@@ -200,7 +200,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_ENV` | `development` | `production` turns on the refusals of SEN-27 | Planned (SEN-27) |
 | `SENTINEL_ALLOW_MEMORY_BACKEND` | `false` | Lets production run the memory backend, for a single process | Planned (SEN-27) |
 | `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock` or `signal`: what the account axis does (ADR-0005) | Planned (SEN-20) |
-| `SENTINEL_TRUSTED_PROXIES` | empty | CIDRs whose `X-Forwarded-For` is believed | Planned (SEN-19) |
+| `SENTINEL_TRUSTED_PROXIES` | empty | CIDRs whose `X-Forwarded-For` is believed | Built (SEN-19) |
 | `SENTINEL_RATE_LIMIT_WARN_AT` | 80 % of the limit | MEDIUM threshold | Planned (SEN-18) |
 | `SENTINEL_RATE_LIMIT_EXEMPT_PATHS` | `["/health", "/ready"]` | Never counted | Planned (SEN-18) |
 | `SENTINEL_RATE_LIMIT_PATHS` | empty | Stricter limits per path prefix | Planned (SEN-18) |

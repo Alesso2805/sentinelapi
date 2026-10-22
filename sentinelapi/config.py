@@ -22,6 +22,9 @@ class SentinelSettings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./sentinelapi_audit.db"
     # false: events are only logged, never written to a database
     audit: bool = True
+    # The Postgres role the app connects as: `sentinel migrate` grants it INSERT and
+    # SELECT on the audit table and nothing else, so the trail is append-only (AR-12)
+    audit_app_role: str | None = None
 
     # Proxies whose X-Forwarded-For is believed, as CIDRs (ADR-0004). Empty: no
     # proxy, so the direct peer is the client and the header is ignored.

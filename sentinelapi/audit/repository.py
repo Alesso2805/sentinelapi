@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +22,7 @@ class SecurityEventRepository:
             user_id=event.fingerprint.user_id,
             path=event.path,
             detail=event.detail,
-            occurred_at=event.occurred_at,
+            occurred_at=datetime.fromtimestamp(event.occurred_at, tz=UTC),
         )
         self._session.add(row)
         await self._session.commit()

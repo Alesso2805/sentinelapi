@@ -53,7 +53,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     @app.get("/security/events")
     async def recent_security_events(
         sentinel: Annotated[Sentinel, Depends(get_sentinel)],
-    ) -> list[dict[str, str | float]]:
+    ) -> list[dict[str, str]]:
         """Demo-only admin view — put real auth in front of this before
         shipping; it's here so you can *see* SentinelAPI working."""
         if sentinel.audit is None:
@@ -64,7 +64,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
                 "threat_level": r.threat_level,
                 "path": r.path,
                 "detail": r.detail,
-                "occurred_at": r.occurred_at,
+                "occurred_at": r.occurred_at.isoformat(),
             }
             for r in await sentinel.audit.recent_critical(limit=50)
         ]

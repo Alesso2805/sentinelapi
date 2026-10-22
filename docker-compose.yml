@@ -1,6 +1,8 @@
 services:
   api:
     build: .
+    # The audit table comes from migrations (ADR-0006); SEN-29 moves this to its own service.
+    command: ["sh", "-c", "sentinel migrate && uvicorn examples.demo_app.main:app --host 0.0.0.0 --port 8000"]
     ports:
       - "8000:8000"
     environment:

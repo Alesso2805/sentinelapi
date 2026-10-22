@@ -12,7 +12,8 @@ import pkgutil
 
 import sentinelapi
 
-NEEDS_AN_EXTRA = {"sentinelapi.storage.redis_backend"}
+# The Redis backend needs its extra; the Alembic environment runs only inside Alembic.
+NEEDS_AN_EXTRA = {"sentinelapi.storage.redis_backend", "sentinelapi.audit.migrations.env"}
 
 
 def main() -> None:

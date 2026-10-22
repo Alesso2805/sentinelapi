@@ -9,6 +9,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from examples.demo_app.main import create_app
+from sentinelapi.audit.migrate import upgrade
 from sentinelapi.config import SentinelSettings
 
 TEST_JWT_SECRET = "integration-test-secret-0123456789abcdef"
@@ -27,6 +28,7 @@ def make_client(tmp_path: Path) -> ClientFactory:
             database_url=f"sqlite+aiosqlite:///{(tmp_path / 'audit.db').as_posix()}",
             **overrides,
         )
+        await upgrade(settings.database_url)
         app = create_app(settings)
         async with app.router.lifespan_context(app):
             transport = ASGITransport(app=app)

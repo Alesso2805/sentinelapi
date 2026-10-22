@@ -5,8 +5,6 @@ from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
-from sentinelapi.audit.models import Base
-
 
 def create_engine_and_sessionmaker(
     database_url: str,
@@ -14,14 +12,6 @@ def create_engine_and_sessionmaker(
     engine = create_async_engine(database_url, future=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     return engine, session_factory
-
-
-async def init_models(engine: AsyncEngine) -> None:
-    """Creates tables if they don't exist. Fine for a demo/small service;
-    swap for Alembic migrations before this touches a shared production
-    database with other schema owners."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 
 @asynccontextmanager

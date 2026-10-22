@@ -91,10 +91,13 @@ With [uv](https://docs.astral.sh/uv/), which installs the exact versions of `uv.
 
 ```bash
 uv sync --all-extras
+uv run sentinel migrate        # creates the audit table (SQLite here)
 uv run uvicorn examples.demo_app.main:app --reload
 ```
 
-Or with pip: `pip install -e ".[demo]"`, then `uvicorn examples.demo_app.main:app --reload`.
+Or with pip: `pip install -e ".[demo]"`, then `sentinel migrate` and `uvicorn examples.demo_app.main:app --reload`. `make demo` does both.
+
+In your own app, run `sentinel migrate` against `SENTINEL_DATABASE_URL` before it starts, as you run your own migrations. SentinelAPI's history keeps its own version table, so the two never meet. On Postgres, `sentinel migrate --app-role <the role your app connects as>` grants that role INSERT and SELECT on the audit table and nothing else, so the trail is append-only.
 
 Try it:
 
@@ -152,7 +155,6 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
 
 - **The audit trail stores raw IP addresses** and, for brute force, the targeted username; the demo's `/security/events` needs no credentials; every event is one row, written inside the request (SEN-24, SEN-25, SEN-26).
-- **The audit table is created with `create_all` at startup,** not by migrations (SEN-23).
 
 ## Roadmap
 

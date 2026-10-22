@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Values that appear in .env.example or docker-compose.yml: public, so never a production secret.
+EXAMPLE_SECRETS = frozenset({"change-me", "change-me-in-production"})
+MIN_SECRET_BYTES = 32
 
 
 class SentinelSettings(BaseSettings):
@@ -13,8 +17,15 @@ class SentinelSettings(BaseSettings):
         env_prefix="SENTINEL_", env_file=".env", extra="ignore", env_ignore_empty=True
     )
 
-    # Storage backend: "memory" (single-process, dev/demo) or "redis" (production)
-    backend: str = "memory"
+    # "production" turns on the refusals of `_refuse_unsafe_production` (SEN-27)
+    env: Literal["development", "production"] = "development"
+
+    # Storage backend: "memory" (single-process, dev/demo) or "redis" (production).
+    # Anything else fails: a typo must not quietly mean memory.
+    backend: Literal["memory", "redis"] = "memory"
+    # Production runs Redis: the memory backend counts per process. Set this to
+    # run one process on purpose.
+    allow_memory_backend: bool = False
     redis_url: str = "redis://localhost:6379/0"
 
     # Audit log database (any SQLAlchemy async URL — sqlite+aiosqlite for
@@ -82,3 +93,24 @@ class SentinelSettings(BaseSettings):
         for cidr in value:
             ipaddress.ip_network(cidr.strip(), strict=False)  # ValueError names the bad entry
         return value
+
+    @model_validator(mode="after")
+    def _refuse_unsafe_production(self) -> Self:
+        """AR-10: in production, every unsafe value is named at once, and the app does not start."""
+        if self.env != "production":
+            return self
+        problems = []
+        if self.jwt_secret in EXAMPLE_SECRETS or len(self.jwt_secret.encode()) < MIN_SECRET_BYTES:
+            problems.append(
+                f"SENTINEL_JWT_SECRET must be your own secret of at least {MIN_SECRET_BYTES} bytes"
+            )
+        if not self.audit_hash_key or len(self.audit_hash_key.encode()) < MIN_SECRET_BYTES:
+            problems.append(f"SENTINEL_AUDIT_HASH_KEY must be set, at least {MIN_SECRET_BYTES} bytes")
+        if self.backend == "memory" and not self.allow_memory_backend:
+            problems.append(
+                "SENTINEL_BACKEND=memory counts per process;"
+                " use redis, or set SENTINEL_ALLOW_MEMORY_BACKEND=true"
+            )
+        if problems:
+            raise ValueError("unsafe production settings: " + "; ".join(problems))
+        return self

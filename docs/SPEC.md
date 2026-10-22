@@ -299,9 +299,9 @@ sentinelapi/
 │   └── py.typed
 ├── examples/demo_app/            # + attack console (SEN-32)
 ├── tests/
-│   ├── unit/                     # SEN-13
+│   ├── unit/
 │   ├── contract/                 # every CounterBackend (SEN-17)
-│   ├── integration/              # demo app, Postgres, Redis (SEN-13)
+│   ├── integration/              # the demo app; Postgres from SEN-23
 │   └── architecture/             # AR-NN (SEN-15)
 ├── benchmarks/                   # SEN-35
 ├── deploy/                       # docker-compose.prod.yml, Caddyfile (SEN-29, SEN-33)

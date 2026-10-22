@@ -1,6 +1,6 @@
 # Sprint 4 — A production-ready stack and the attack console (SEN-27 to SEN-32)
 
-**Status as of 2026-10-22:** started right after Sprint 3, with no calendar. 18 points. Since #20 no architecture rule is marked xfail: all 18 hold.
+**Status as of 2026-10-22:** closed. Started right after Sprint 3 and finished the same day: all six stories (18 points) merged with green CI, #20 to #25. Since #20 no architecture rule is marked xfail: all 18 hold. `main` now requires 10 checks, among them the image, the whole stack from an empty database and the console in Chromium.
 
 **Order:** SEN-27, SEN-28, SEN-29, SEN-30, SEN-32 (it needs SEN-26's events), SEN-31.
 
@@ -13,18 +13,23 @@
 | SEN-29 | #22 | `docker-compose.yml`: `migrate` runs `sentinel migrate` once as the owner and exits; the API waits for it and connects as `sentinel_app`, created by `deploy/postgres-init/app-role.sh` and granted INSERT and SELECT only; Redis and Postgres pinned and unpublished; every secret overridable from `.env`. `deploy/docker-compose.prod.yml`: `SENTINEL_ENV=production`, secrets required (`${...:?}`), the API unpublished and trusting only the private ranges, Caddy pinned by digest as in VeriLedger. CI job "Full stack from an empty database", required on `main` | Locally, from empty volumes: migrate exit 0, only the API published, 8 wrong passwords then 429, the operator reads the event, the app role gets "permission denied" on DELETE, `sentinel purge` runs as the owner. The server overlay rehearsed on ports 18080/18443 with `SENTINEL_HOSTNAME=localhost`: HTTPS `/health` 200, API unpublished, `production` with Redis, and 61 requests each with a different forged `X-Forwarded-For` still got the 429 at the 61st, because Caddy replaces the header |
 | SEN-30 | #23 | `GET /ready`: `Sentinel.ready()` pings the counter backend and checks the audit database is reachable and migrated, each within 2 s, and the demo answers 503 with the failing checks. The middleware gives every request an id (the caller's `X-Request-ID` if well formed, a new one otherwise), returns it in the response and binds it to every log line of the request; the demo logs JSON in production, tracebacks as fields | Ready with both up; 503 with no database, with an unmigrated one, and with Redis unreachable; ids on every response and on a 429, a caller's kept and a malformed one replaced; the 429's security event logged with the response's id; a production log line is one JSON object with `request_id`. 185 passed |
 | SEN-32 | #24 | `examples/demo_app/console.py` and `static/`: the page at `/`, `POST /demo/scenarios/{burst,stuffing,replay}` and `GET /demo/events` (SSE), only with `SENTINEL_DEMO_MODE`. Each run uses `Sentinel.sandbox()`, the real detectors on a fresh memory backend, with synthetic sources from RFC 5737; every verdict goes through `Sentinel.report` (log, audit) and to the visitor's own stream, keyed by an HttpOnly, SameSite=Strict session cookie. 10 runs per hour per address. A strict CSP, no third-party script, light and dark themes, usable at 390 px. A CI job runs it in Chromium | Burst blocked from request 61 with `Retry-After`; stuffing locks the account at the 8th failure from 8 addresses and refuses the owner too; a replayed token gets 403 and a forged one 401; two runs give identical steps; a run reaches the operator's events API; the 11th run in an hour gets 429; without demo mode `/`, the scenarios and the static files are 404; a visitor's stream carries only their events. In Chromium: the keyboard alone runs the burst, the live event arrives, and axe-core finds no serious or critical violation before, after and in the dark theme. 196 passed, plus the browser test |
-| SEN-31 | — | — | — |
+| SEN-31 | #25 | `sentinelapi/alerts/webhook.py`: `WebhookAlerter`, a sink of `Sentinel.report` when `SENTINEL_ALERT_WEBHOOK_URL` is set. CRITICAL events only; at most one per source fingerprint and threat every 10 minutes; a bounded queue and a background task, so a request never waits on the network; three retries with backoff (1, 2, 4 s), then `alert_failed` in the log; Slack's `{"text": ...}` with the source's keyed hash. The standard library's `urllib` in a thread, not a new HTTP client dependency | Only CRITICAL sent; 50 identical events give one alert, another source a second, the same source after 10 minutes a third; two failures then delivery; four failures logged and dropped; reporting returns while the receiver hangs; no address in the text. End to end, five replays in the demo reach a real HTTP receiver once, as JSON. 203 passed |
 
 ## Sprint decisions
 
-—
+- **Production names every problem at once** and refuses to start; development keeps its defaults, so a laptop needs no secrets.
+- **The image pins Python 3.12.15 and copies a pinned `uv`** binary: uv publishes no pinned image with both. It runs as uid 10001 and checks its own health with the standard library.
+- **The stack separates owner and app:** `migrate` runs as the table's owner, the API as `sentinel_app`, which can only add and read audit rows. The server overlay trusts the private ranges as proxies, since the API publishes no port; a fixed subnet collided with other Docker networks in the rehearsal.
+- **`/ready` means migrated,** not only reachable: an API on an old schema is not ready.
+- **The console is a static page** with plain JavaScript instead of Jinja2 and HTMX (ADR-0010 updated): nothing is rendered per visitor, and a security demo carries no third-party script. Each run gets a sandbox of the real detectors, so visitors never interfere.
+- **The webhook uses the standard library,** not a new HTTP client, and a fixed 10-minute cooldown per source and threat.
 
 ## Changes to the specification in this sprint
 
-—
+- #20 to #25: the configuration table (`SENTINEL_ENV`, `SENTINEL_ALLOW_MEMORY_BACKEND`, `SENTINEL_DEMO_MODE`, `SENTINEL_ALERT_WEBHOOK_URL`), the scope table (Compose stack, deployment overlay, console, alerts), the demo's API (`/ready`, `/`, the console's routes) and the request id under HTTP responses.
 
 ## Retro
 
-- **Went well:** —
-- **To improve:** —
-- **To try:** —
+- **Went well:** the server overlay was rehearsed on a laptop before any server exists, and the rehearsal proved ADR-0004 end to end: 61 requests, each with a different forged `X-Forwarded-For`, were still one client behind Caddy.
+- **To improve:** the fixed-subnet idea only failed on a machine with other Docker networks; what depends on the host should be rehearsed before it is written into a story's design.
+- **To try:** Sprint 5 depends on two things only the product owner can give, a server and a PyPI account; ask for both at its start, and do everything else first.

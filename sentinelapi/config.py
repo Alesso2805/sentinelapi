@@ -81,6 +81,10 @@ class SentinelSettings(BaseSettings):
     # your refresh/redeem endpoints — see jwt_replay.py for why)
     jwt_replay_paths: tuple[str, ...] = ("/auth/refresh",)
 
+    # A Slack-compatible webhook that hears about CRITICAL events, at most one per source
+    # and threat every 10 minutes (SEN-31). Unset: no alerts
+    alert_webhook_url: str | None = None
+
     # The demo's attack console at / (ADR-0010, SEN-32); off, its routes do not exist
     demo_mode: bool = False
 

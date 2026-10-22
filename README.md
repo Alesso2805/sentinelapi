@@ -1,14 +1,16 @@
 # SentinelAPI
 
-**Adaptive threat-detection middleware for FastAPI.** Drop it into an existing app and get sliding-window rate limiting, credential-stuffing-aware brute-force detection, and JWT-replay protection — with every blocking decision written to a queryable audit trail.
+**Threat-detection middleware for FastAPI.** Drop it into an existing app and get fixed-window rate limiting, credential-stuffing-aware brute-force detection, and refresh-token replay protection — with every verdict written to a queryable audit trail.
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)](https://docs.sqlalchemy.org/en/20/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2-D71F00?logo=sqlalchemy&logoColor=white)](https://docs.sqlalchemy.org/)
 [![Redis](https://img.shields.io/badge/Redis-optional-DC382D?logo=redis&logoColor=white)](https://redis.io/docs/latest/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Pytest](https://img.shields.io/badge/tested%20with-pytest-0A9EDC?logo=pytest&logoColor=white)](https://docs.pytest.org/en/stable/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> **Status: before 1.0.0, not ready for production.** Each detector works in its main scenario, but an audit on 2026-10-22 found a way around each of them. They are listed under [Known limitations](#known-limitations) and are being fixed in the open, one story at a time, on the way to 1.0.0: see the [backlog](docs/BACKLOG.md).
 
 ## Why this exists
 
@@ -21,7 +23,7 @@ SentinelAPI implements both, alongside standard rate limiting, as small, indepen
 
 ## Architecture
 
-The detection logic never imports FastAPI, Redis, or SQLAlchemy. It depends on a `CounterBackend` protocol and returns plain `SecurityEvent` dataclasses. That's what makes the core provably correct on its own, with zero external services:
+The detection logic never imports FastAPI, Redis, or SQLAlchemy. It depends on a `CounterBackend` protocol and returns plain `SecurityEvent` dataclasses. That's what lets the core be tested on its own, with zero external services:
 
 ```
 sentinelapi/
@@ -80,7 +82,7 @@ curl localhost:8000/security/events
 Two layers, on purpose:
 
 ```bash
-# Core detectors — pure stdlib unittest, no dependencies at all, runs anywhere
+# Core detectors — stdlib unittest, no framework, database or Redis needed
 python -m unittest discover -s tests -p "test_rate_limiter.py"
 python -m unittest discover -s tests -p "test_brute_force.py"
 python -m unittest discover -s tests -p "test_jwt_replay.py"
@@ -90,26 +92,54 @@ pip install -e ".[dev]"
 pytest tests/test_middleware_integration.py -v
 ```
 
-The first three files are dependency-free by design, so the detection logic itself can be verified without spinning up FastAPI, Redis, or a database — that's what let this project be built and tested inside a sandboxed environment with no network access, before ever touching Docker.
+The first three files need no running service by design (only the package and PyJWT), so the detection logic itself can be verified without spinning up FastAPI, Redis, or a database — that's what let this project be built and tested inside a sandboxed environment with no network access, before ever touching Docker.
 
 ## Configuration
 
-All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file — see `.env.example`). Key ones:
+All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file — see `.env.example`, which lists every one). Key ones:
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `SENTINEL_BACKEND` | `memory` | `memory` (dev/single-process) or `redis` (production) |
-| `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window before blocking |
+| `SENTINEL_RATE_LIMIT_MAX_REQUESTS` | `60` | Requests per window. Going over it is logged; requests are blocked only past twice this number, which SEN-18 changes |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` | `8` | Failed attempts against one account (any source) before blocking |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay |
 | `SENTINEL_ENFORCE` | `true` | `false` = log-only "shadow mode," useful before you trust it to block for real |
 
+## Known limitations
+
+Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
+
+- **The in-memory backend, the default, never resets a busy client.** It moves its window forward on every hit, so a client that never pauses for a full window is eventually blocked, even well under its limit. The Redis backend counts correctly (SEN-17).
+- **Rate limits are keyed on the IP and the User-Agent.** A client that changes its User-Agent on every request is never limited, and behind a reverse proxy every client shares the proxy's address (SEN-19).
+- **Blocking starts past twice the configured limit** (SEN-18).
+- **A brute-force block does not stop the right password.** It only turns the failed login's 401 into a 403 (SEN-20).
+- **Usernames are counted as typed,** so changing their case splits the per-account count, and the account owner's successful login erases failures that came from other sources (SEN-20).
+- **A single-use token without `exp` is remembered for one hour only** (SEN-21).
+- **The audit trail stores raw IP addresses** and, for brute force, the targeted username; the demo's `/security/events` needs no credentials; every event is one row, written inside the request (SEN-24, SEN-25, SEN-26).
+- **The audit table is created with `create_all` at startup,** not by migrations (SEN-23).
+- **The integration tests write to the demo's SQLite file** in the working directory (SEN-13).
+
 ## Roadmap
 
-- [ ] Alembic migrations for the audit table (currently `create_all` — fine for a demo, not for a shared prod DB)
-- [ ] Small React dashboard over `/security/events` instead of raw JSON
-- [ ] Pluggable notification hook (Slack/email) on CRITICAL events
+Planned in [docs/BACKLOG.md](docs/BACKLOG.md), in two-week sprints:
+
+1. A locked, linted and type-checked repository, with CI on every pull request.
+2. Detectors without the evasions above.
+3. A three-line integration, and an audit trail that is migrated, private and safe under a flood.
+4. A production-ready stack, webhook alerts on CRITICAL events, and an attack console where you launch each attack and watch it get caught.
+5. A deployed demo and release 1.0.0.
+
+## Documentation
+
+- [Specification](docs/SPEC.md): scope, architecture, the detection contract, the audit table and every setting.
+- [Backlog](docs/BACKLOG.md) and [sprint notes](docs/sprints/).
+- [Architecture rules](docs/ARCHITECTURE_RULES.md) and [decision records](docs/adr/README.md).
+
+## Security
+
+Found a vulnerability that is not under Known limitations? Please report it privately: see [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT
+[MIT](LICENSE)

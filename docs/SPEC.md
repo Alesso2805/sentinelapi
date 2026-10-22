@@ -51,7 +51,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Rate limiting | Client address behind a proxy | Trusted proxies and `X-Forwarded-For`; IPv6 grouped by /64 | Built (SEN-19, ADR-0004) |
 | Brute force | Two axes | Failures per source, the client's address (MEDIUM 5, HIGH 10), and per account, a hash of the normalized username (HIGH 8, CRITICAL 15), in 15 minutes | Built (SEN-03, SEN-19, SEN-20) |
 | Brute force | A block that holds | `check` before the password: a blocked source, or a locked account (`lock`, the default), is refused with 429 until its window ends; `signal` asks the app for a challenge instead. Usernames trimmed and casefolded; a success takes back only that source's failures against that account | Built (SEN-20, ADR-0005) |
-| Token replay | Single-use tokens | Only on `jwt_replay_paths`; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403 | Built (SEN-04); `exp` and `jti` required in SEN-21 |
+| Token replay | Single-use tokens | Only on `jwt_replay_paths`; `exp` and `jti` required; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403; audience and issuer checked when set | Built (SEN-04, SEN-21) |
 | Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory since SEN-17 |
 | Audit | Event log | Table `sentinel_security_events`; the demo's `GET /security/events` | Built (SEN-06); migrations SEN-23, privacy SEN-24, write path SEN-25, protected API SEN-26 |
 | Enforcement | Shadow mode | `SENTINEL_ENFORCE=false` logs and records without blocking | Built (SEN-07), untested until SEN-13 |
@@ -143,8 +143,8 @@ Until SEN-17 the memory backend moved its expiry forward on every hit, so a clie
 | Brute force | failures against one username ≥ 8 | HIGH; 403 for the failed attempt only, until SEN-20 | `lock`: HIGH, the account refused from every source until its window ends. `signal`: MEDIUM with `challenge_required`. Done (SEN-20) |
 | Brute force | failures against one username ≥ 15 | CRITICAL; 403 for the failed attempt only, until SEN-20 | `lock`: CRITICAL, refused as above. `signal`: as above. Done (SEN-20) |
 | Token replay | expired token | LOW | Same |
-| Token replay | bad signature or claims; no `jti` | MEDIUM | Same; a token without `exp` too (SEN-21) |
-| Token replay | `jti` already redeemed | CRITICAL, 403 | Same, remembered for the token's whole life (SEN-21) |
+| Token replay | bad signature or claims; no `jti`; no `exp` | MEDIUM (a token without `exp` was accepted until SEN-21) | Done (SEN-21) |
+| Token replay | `jti` already redeemed | CRITICAL, 403; until SEN-21 a token without `exp` was forgotten after an hour | Remembered for the token's whole life: done (SEN-21) |
 
 HIGH and CRITICAL block; LOW and MEDIUM are only logged and recorded.
 
@@ -193,8 +193,8 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_BRUTE_FORCE_WINDOW_SECONDS` | `900` | Brute-force window | Built |
 | `SENTINEL_BRUTE_FORCE_PER_SOURCE_MEDIUM` / `_HIGH` | `5` / `10` | Failures from one source | Built; named `…_PER_FINGERPRINT_…` until SEN-20 |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` / `_CRITICAL` | `8` / `15` | Failures against one account | Built |
-| `SENTINEL_JWT_SECRET` | `change-me` | Key that verifies tokens | Built; the demo ignores it until SEN-21; production refuses the default in SEN-27 |
-| `SENTINEL_JWT_ALGORITHMS` | `["HS256"]` | Accepted algorithms | Built; the demo ignores it until SEN-21 |
+| `SENTINEL_JWT_SECRET` | `change-me` | Key that signs and verifies tokens | Built; the demo used a constant until SEN-21; production refuses the default in SEN-27 |
+| `SENTINEL_JWT_ALGORITHMS` | `["HS256"]` | Accepted algorithms; the demo signs with the first | Built; honored by the demo since SEN-21 |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for replay | Built |
 | `SENTINEL_ENFORCE` | `true` | `false` = shadow mode | Built |
 | `SENTINEL_ENV` | `development` | `production` turns on the refusals of SEN-27 | Planned (SEN-27) |
@@ -204,7 +204,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_RATE_LIMIT_WARN_AT` | 80 % of the limit | MEDIUM threshold, logged once per window | Built (SEN-18) |
 | `SENTINEL_RATE_LIMIT_EXEMPT_PATHS` | `["/health", "/ready"]` | Never counted | Built (SEN-18) |
 | `SENTINEL_RATE_LIMIT_PATHS` | empty | Stricter limits per path prefix, e.g. `{"/auth/": 10}` | Built (SEN-18) |
-| `SENTINEL_JWT_AUDIENCE`, `SENTINEL_JWT_ISSUER` | empty | Checked when set | Planned (SEN-21) |
+| `SENTINEL_JWT_AUDIENCE`, `SENTINEL_JWT_ISSUER` | empty | Checked when set | Built (SEN-21) |
 | `SENTINEL_AUDIT_HASH_KEY` | none; required in production | Key for `client_hash` and `subject_hash` | Planned (SEN-24) |
 | `SENTINEL_AUDIT_RETENTION_DAYS` | `90` | Purge horizon | Planned (SEN-24) |
 | `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Write path | Planned (SEN-25) |

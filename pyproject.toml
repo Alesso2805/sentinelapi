@@ -73,8 +73,7 @@ select = ["E", "F", "I", "UP", "B", "TID251"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["TID251"]
 "sentinelapi/clock.py" = ["TID251"]
-# Known AR-16 debt, each removed by the story named: SEN-21 (the demo's tokens), SEN-23 (the audit model).
-"examples/demo_app/auth.py" = ["TID251"]  # SEN-21
+# Known AR-16 debt, removed by the story named: SEN-23 (the audit model).
 "sentinelapi/audit/models.py" = ["TID251"]  # SEN-23
 
 # AR-04 and AR-05, checked by `lint-imports`. Third-party packages are confined to the module that needs them.

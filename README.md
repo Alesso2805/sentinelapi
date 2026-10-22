@@ -111,14 +111,14 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 | `SENTINEL_TRUSTED_PROXIES` | `[]` | CIDRs of your reverse proxies. Their `X-Forwarded-For` is believed, right-most hop first; with none, the direct peer is the client, so no header can choose its address |
 | `SENTINEL_BRUTE_FORCE_PER_USERNAME_HIGH` | `8` | Failed attempts against one account, from any source, its username trimmed and casefolded |
 | `SENTINEL_BRUTE_FORCE_ACCOUNT_ACTION` | `lock` | `lock`: the account is refused from every source until its window ends (so anyone who knows a username can lock its owner out that long). `signal`: events carry `challenge_required` for your app to ask for a CAPTCHA or MFA |
-| `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay |
+| `SENTINEL_JWT_SECRET` | `change-me` | The key your app signs tokens with; the replay detector verifies with it. Set your own: production will refuse the default (SEN-27) |
+| `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay. Tokens there need `exp` and `jti`; a used `jti` is refused until the token expires |
 | `SENTINEL_ENFORCE` | `true` | `false` = log-only "shadow mode," useful before you trust it to block for real |
 
 ## Known limitations
 
 Found by the audit of 2026-10-22. Each one is a story in the [backlog](docs/BACKLOG.md), and each fix lands with the test that reproduces it.
 
-- **A single-use token without `exp` is remembered for one hour only** (SEN-21).
 - **The audit trail stores raw IP addresses** and, for brute force, the targeted username; the demo's `/security/events` needs no credentials; every event is one row, written inside the request (SEN-24, SEN-25, SEN-26).
 - **The audit table is created with `create_all` at startup,** not by migrations (SEN-23).
 

@@ -31,7 +31,7 @@ from sentinelapi.middleware import SentinelMiddleware
 from sentinelapi.storage.backend import CounterBackend
 from sentinelapi.storage.memory_backend import InMemoryBackend
 
-from .auth import JWT_SECRET
+from .auth import decode_token
 from .auth import router as auth_router
 
 _security = HTTPBearer()
@@ -84,9 +84,16 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
         per_username_critical=settings.brute_force_per_username_critical,
         account_action=AccountAction(settings.brute_force_account_action),
     )
-    jwt_replay_detector = JWTReplayDetector(backend, secret=JWT_SECRET)
+    jwt_replay_detector = JWTReplayDetector(
+        backend,
+        secret=settings.jwt_secret,
+        algorithms=settings.jwt_algorithms,
+        audience=settings.jwt_audience,
+        issuer=settings.jwt_issuer,
+    )
     client_resolver = ClientResolver(settings.trusted_proxies)
 
+    app.state.settings = settings
     app.state.brute_force_detector = brute_force_detector
     app.state.client_resolver = client_resolver
     app.state.persist_event = persist_event
@@ -106,7 +113,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     @app.get("/me")
     async def me(creds: Annotated[HTTPAuthorizationCredentials, Depends(_security)]) -> dict[str, str]:
         try:
-            payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=["HS256"])
+            payload = decode_token(settings, creds.credentials)
         except jwt.InvalidTokenError:
             raise HTTPException(status_code=401, detail="Invalid access token") from None
         return {"user": payload["sub"]}

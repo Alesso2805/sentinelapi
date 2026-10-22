@@ -48,6 +48,9 @@ class SentinelSettings(BaseSettings):
     # JWT replay — must match the secret/algorithm your app issues tokens with
     jwt_secret: str = "change-me"
     jwt_algorithms: tuple[str, ...] = ("HS256",)
+    # Checked when set: a token for another audience or from another issuer is invalid
+    jwt_audience: str | None = None
+    jwt_issuer: str | None = None
 
     # Paths the JWT-replay detector should actually check (typically just
     # your refresh/redeem endpoints — see jwt_replay.py for why)

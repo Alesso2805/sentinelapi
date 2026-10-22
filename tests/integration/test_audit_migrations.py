@@ -102,6 +102,7 @@ async def test_the_sink_writes_and_reads_events(database_url: str) -> None:
     try:
         await sink.start()
         await sink(an_event())
+        await sink.flush(everything=True)
         rows = await sink.recent_critical()
     finally:
         await sink.close()
@@ -124,7 +125,8 @@ async def test_the_app_role_cannot_rewrite_the_audit_trail() -> None:  # AR-12
     as_app_url = as_app.render_as_string(hide_password=False)
     try:
         sink = DatabaseAuditSink(as_app_url, PSEUDONYMIZE)
-        await sink(an_event())  # INSERT works
+        await sink(an_event())
+        await sink.flush(everything=True)  # INSERT works
         assert len(await sink.recent_critical()) == 1  # SELECT works
         await sink.close()
         for statement in (f"UPDATE {TABLE} SET detail = 'rewritten'", f"DELETE FROM {TABLE}"):
@@ -139,8 +141,11 @@ async def test_purge_deletes_only_what_is_past_retention(database_url: str) -> N
     clock = FakeClock()
     sink = DatabaseAuditSink(database_url, PSEUDONYMIZE)
     try:
+        # Flushed one by one: identical events in one window would be one row.
         await sink(an_event(occurred_at=clock.now() - 91 * 86_400))
+        await sink.flush(everything=True)
         await sink(an_event(occurred_at=clock.now() - 89 * 86_400))
+        await sink.flush(everything=True)
         assert await purge(database_url, older_than_days=90, clock=clock) == 1
         assert len(await sink.recent_critical()) == 1
     finally:

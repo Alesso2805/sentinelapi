@@ -58,6 +58,8 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
         shipping; it's here so you can *see* SentinelAPI working."""
         if sentinel.audit is None:
             return []
+        # The sink writes in the background (ADR-0006); a demo shows what just happened.
+        await sentinel.audit.flush(everything=True)
         return [
             {
                 "threat_type": r.threat_type,

@@ -6,8 +6,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSTRUCTED_ONLY_BY_THE_INSTALLER = {
     "InMemoryBackend",
@@ -36,9 +34,6 @@ def constructions(path: Path) -> list[str]:
     return found
 
 
-@pytest.mark.xfail(
-    strict=True, reason="SEN-22: the demo wires its detectors by hand until the installer exists"
-)
 def test_only_the_installer_constructs_backends_and_detectors() -> None:
     files = [
         p for d in ("sentinelapi", "examples") for p in sorted((ROOT / d).rglob("*.py")) if p != INSTALLER

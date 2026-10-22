@@ -55,7 +55,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory since SEN-17 |
 | Audit | Event log | Table `sentinel_security_events`; the demo's `GET /security/events` | Built (SEN-06); migrations SEN-23, privacy SEN-24, write path SEN-25, protected API SEN-26 |
 | Enforcement | Shadow mode | `SENTINEL_ENFORCE=false` logs and records without blocking | Built (SEN-07), untested until SEN-13 |
-| Integration | One-call installer | `install_sentinel(app, settings)`; pure ASGI middleware | Planned (SEN-22, ADR-0007) |
+| Integration | One-call installer | `install_sentinel(app, settings, on_event=...)` builds and wires everything and returns a `Sentinel` whose `login_guard` the login calls; pure ASGI middleware | Built (SEN-22, ADR-0007) |
 | Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
 | Demo | Demo app | Login, refresh, `/me`, `/health`, events | Built (SEN-08) |
 | Demo | Attack console | A page where a visitor runs each attack and watches the verdicts | Planned (SEN-32, ADR-0010) |
@@ -84,19 +84,21 @@ One Python package, `sentinelapi`, that runs inside the integrator's process (AD
 | `storage/redis_backend.py` | `RedisBackend` | Standard library and `redis` |
 | `detectors` | `RateLimiter`, `BruteForceDetector`, `JWTReplayDetector`, `build_fingerprint` | Standard library, PyJWT, `domain`, `storage.backend` |
 | `audit` | SQLAlchemy model, engine helpers, `SecurityEventRepository` | SQLAlchemy, `domain` |
-| `middleware.py` | `SentinelMiddleware` | Starlette, `detectors`, `domain`, `logging_config` |
+| `middleware.py` | `SentinelMiddleware`, pure ASGI | Starlette, `detectors`, `domain`, `client_address`, `logging_config` |
+| `integration.py` | `install_sentinel`, `Sentinel`, `LoginGuard`: the only place backends and detectors are built (AR-18) | Starlette and everything above |
+| `client_address.py`, `clock.py` | `ClientResolver` (ADR-0004); `Clock` and `SystemClock` (AR-16) | Standard library, `detectors.fingerprint`, `domain` |
 | `config.py`, `logging_config.py` | `SentinelSettings`, structlog setup | pydantic-settings, structlog |
 | `examples/demo_app` | The demo FastAPI app | Everything; nothing in `sentinelapi` imports it |
 
 The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md).
 
-**Request flow, as built.**
+**Request flow.** `install_sentinel` adds the middleware, which, for each HTTP request:
 
-1. The middleware builds a fingerprint from `request.client.host` and the `User-Agent`.
+1. Resolves the client's address through the trusted proxies and builds the fingerprint (SEN-19).
 2. `RateLimiter.check(fingerprint, path)`.
 3. If the path is in `jwt_replay_paths` and a bearer token is present: `JWTReplayDetector.check`.
-4. Every event is logged with structlog and passed to `on_event`; the demo writes it to the database inside the request.
-5. If enforcement is on and the event is HIGH or CRITICAL: 429 for rate limiting, 403 for anything else. Otherwise the request reaches the app.
+4. Reports every event: the log line, then the audit sink, then the app's `on_event`; a failing sink is logged and never fails the request (SEN-22). The audit write still happens inside the request until SEN-25.
+5. If enforcement is on and the event is HIGH or CRITICAL: 429 for rate limiting, 403 for anything else, answered by the middleware itself. Otherwise the request reaches the app with `receive` and `send` untouched.
 
 **Login flow.** Brute-force detection is not in the middleware (ADR-0003): only the login endpoint knows whether a password was right. Since SEN-20 the demo's `/auth/login` asks `BruteForceDetector.check` first and answers 429 with `Retry-After` when the source or the account is blocked, right password or not; then it verifies the password and calls `record_failure` (another 429 if that failure crosses a threshold, 401 otherwise) or `record_success`, which takes back only that source's failures against that account. Until SEN-20 it consulted the detector only after a wrong password, so a block turned a 401 into a 403 and the right password still got in.
 
@@ -104,7 +106,7 @@ The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITEC
 
 - The client's address is resolved through trusted proxies (SEN-19).
 - The login asks `BruteForceDetector.check` before verifying the password (done in SEN-20).
-- The middleware is pure ASGI and is installed by `install_sentinel` (SEN-22).
+- The middleware is pure ASGI and is installed by `install_sentinel` (done in SEN-22).
 - `on_event` puts the event on a bounded queue that a background writer drains in batches (SEN-25).
 
 **Processes.** SentinelAPI has none of its own: it runs inside the app's process. With several workers or replicas, the counters must live in Redis; the memory backend counts per process (SEN-27 refuses it in production unless explicitly allowed). The demo stack runs the API, Redis and Postgres, plus a `migrate` container from SEN-29.
@@ -292,8 +294,8 @@ sentinelapi/
 │   │   └── migrations/           # Alembic history for the audit table (SEN-23)
 │   ├── alerts/                   # webhook on CRITICAL events (SEN-31)
 │   ├── client_address.py         # trusted proxies (SEN-19)
-│   ├── integration.py            # install_sentinel (SEN-22)
-│   ├── middleware.py             # pure ASGI from SEN-22
+│   ├── integration.py            # install_sentinel, Sentinel, LoginGuard
+│   ├── middleware.py             # pure ASGI
 │   ├── config.py
 │   ├── logging_config.py
 │   └── py.typed

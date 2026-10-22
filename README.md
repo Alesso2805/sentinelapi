@@ -29,20 +29,52 @@ The detection logic never imports FastAPI, Redis, or SQLAlchemy. It depends on a
 sentinelapi/
 ├── domain/entities.py       # ThreatType, ThreatLevel, SecurityEvent — no dependencies
 ├── detectors/                # Pure logic. Depends only on domain/ + storage protocol.
-│   ├── rate_limiter.py       # Fixed-window rate limiting per fingerprint+path
+│   ├── rate_limiter.py       # Fixed-window rate limiting per client, stricter per path prefix
 │   ├── brute_force.py        # Dual-axis: per source AND per account, checked before the password
 │   └── jwt_replay.py         # Single-use enforcement via `jti`, for refresh/reset tokens
 ├── storage/backend.py         # CounterBackend Protocol — the seam between logic and infra
 │   ├── memory_backend.py      # Zero-dependency, used by tests + single-process dev
 │   └── redis_backend.py       # Multi-process production backend
 ├── audit/                     # SQLAlchemy async models + repository — the durable log
-├── middleware.py               # Thin FastAPI/Starlette adapter over the detectors above
+├── client_address.py           # The client's address, through the proxies you trust
+├── clock.py                    # The only module that reads the time
+├── middleware.py               # Pure ASGI adapter over the detectors above
+├── integration.py              # install_sentinel: wires all of it into an app
 └── config.py                   # Pydantic Settings, all overridable via SENTINEL_* env vars
 ```
 
-**Why brute-force isn't in the middleware:** rate limiting and JWT-replay apply to *every* request and need nothing but headers, so they run as blanket middleware. Brute-force detection needs to know whether a login attempt actually succeeded — middleware would have to parse response bodies to know that, which is fragile. So it's exposed as a detector your login endpoint calls directly (see `examples/demo_app/auth.py`).
+**Why brute-force isn't in the middleware:** rate limiting and JWT-replay apply to *every* request and need nothing but headers, so they run as blanket middleware. Brute-force detection needs to know whether a login attempt actually succeeded — middleware would have to parse response bodies to know that, which is fragile. So it's exposed as a guard your login endpoint calls directly (below, and `examples/demo_app/auth.py`).
 
 **Why JWT-replay is scoped to specific paths, not every request:** ordinary access tokens are presented on *every* API call by design — treating that as "replay" would flag 100% of legitimate traffic. This detector is for tokens meant to be redeemed exactly once: refresh-token rotation, password-reset links, email-verification links.
+
+## Use it in your app
+
+```python
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel
+
+from sentinelapi.integration import install_sentinel
+
+app = FastAPI()
+sentinel = install_sentinel(app)  # rate limit + replay check on every request, and the audit trail
+
+
+class Login(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/login")
+async def login(body: Login, request: Request) -> dict[str, str]:
+    await sentinel.login_guard.check(request, body.username)  # 429 while the source or account is blocked
+    if not passwords_match(body.username, body.password):  # your own check
+        await sentinel.login_guard.failed(request, body.username)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    await sentinel.login_guard.succeeded(request, body.username)
+    return {"token": "..."}
+```
+
+Three lines are SentinelAPI's: the import, `install_sentinel(app)`, and the guard around your own password check. Settings come from `SENTINEL_*` variables (see Configuration); `install_sentinel(app, settings, on_event=...)` also takes them explicitly, and an `on_event` coroutine receives every verdict after the log and the audit trail. This snippet runs as a test (`tests/integration/test_installer.py`), so it cannot drift from the code.
 
 ## Quickstart
 

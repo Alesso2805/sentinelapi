@@ -25,8 +25,8 @@ format:
 	uv run ruff format .
 
 typecheck:
-	uv run mypy sentinelapi examples tests
+	uv run mypy
 
 # Fails if the library needs a package that is only an extra or a dev dependency
 check-imports:
-	uv run --isolated --no-dev python -c "import sentinelapi.middleware, sentinelapi.audit.repository"
+	uv run --isolated --no-dev python scripts/check_imports.py

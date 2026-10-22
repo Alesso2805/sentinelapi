@@ -314,7 +314,8 @@ sentinelapi/
 │   ├── adr/
 │   ├── runbooks/                 # SEN-34
 │   └── sprints/
-├── .github/workflows/ci.yml      # SEN-14
+├── .github/workflows/ci.yml
+├── scripts/check_imports.py      # AR-06, run by CI without extras
 ├── docker-compose.yml            # with the migrate service (SEN-29)
 ├── Dockerfile
 ├── Makefile

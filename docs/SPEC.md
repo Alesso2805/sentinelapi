@@ -53,7 +53,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Brute force | A block that holds | `check` before the password: a blocked source, or a locked account (`lock`, the default), is refused with 429 until its window ends; `signal` asks the app for a challenge instead. Usernames trimmed and casefolded; a success takes back only that source's failures against that account | Built (SEN-20, ADR-0005) |
 | Token replay | Single-use tokens | Only on `jwt_replay_paths`; `exp` and `jti` required; a `jti` is remembered until the token's `exp`; a second use → CRITICAL, 403; audience and issuer checked when set | Built (SEN-04, SEN-21) |
 | Storage | Memory and Redis backends | One `CounterBackend` protocol | Built (SEN-01, SEN-05); one window semantics and bounded memory since SEN-17 |
-| Audit | Event log | Table `sentinel_security_events`, created by the package's own migrations (`sentinel migrate`), with keyed hashes instead of addresses and accounts, purged by `sentinel purge`; the demo's `GET /security/events` | Built (SEN-06, SEN-23, SEN-24); write path SEN-25, protected API SEN-26 |
+| Audit | Event log | Table `sentinel_security_events`, created by the package's own migrations (`sentinel migrate`), with keyed hashes instead of addresses and accounts, written off the request path with identical events folded into one row, purged by `sentinel purge`; the demo's `GET /security/events` | Built (SEN-06, SEN-23, SEN-24, SEN-25); protected API SEN-26 |
 | Enforcement | Shadow mode | `SENTINEL_ENFORCE=false` logs and records without blocking | Built (SEN-07), untested until SEN-13 |
 | Integration | One-call installer | `install_sentinel(app, settings, on_event=...)` builds and wires everything and returns a `Sentinel` whose `login_guard` the login calls; pure ASGI middleware | Built (SEN-22, ADR-0007) |
 | Alerts | Webhook on CRITICAL events | Slack-compatible JSON, deduplicated | Planned (SEN-31) |
@@ -97,7 +97,7 @@ The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITEC
 1. Resolves the client's address through the trusted proxies and builds the fingerprint (SEN-19).
 2. `RateLimiter.check(fingerprint, path)`.
 3. If the path is in `jwt_replay_paths` and a bearer token is present: `JWTReplayDetector.check`.
-4. Reports every event: the log line, then the audit sink, then the app's `on_event`; a failing sink is logged and never fails the request (SEN-22). The audit write still happens inside the request until SEN-25.
+4. Reports every event: the log line, then the audit sink, then the app's `on_event`; a failing sink is logged and never fails the request (SEN-22). The sink only folds the event into memory; a background writer stores it (SEN-25).
 5. If enforcement is on and the event is HIGH or CRITICAL: 429 for rate limiting, 403 for anything else, answered by the middleware itself. Otherwise the request reaches the app with `receive` and `send` untouched.
 
 **Login flow.** Brute-force detection is not in the middleware (ADR-0003): only the login endpoint knows whether a password was right. Since SEN-20 the demo's `/auth/login` asks `BruteForceDetector.check` first and answers 429 with `Retry-After` when the source or the account is blocked, right password or not; then it verifies the password and calls `record_failure` (another 429 if that failure crosses a threshold, 401 otherwise) or `record_success`, which takes back only that source's failures against that account. Until SEN-20 it consulted the detector only after a wrong password, so a block turned a 401 into a 403 and the right password still got in.
@@ -107,7 +107,7 @@ The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITEC
 - The client's address is resolved through trusted proxies (SEN-19).
 - The login asks `BruteForceDetector.check` before verifying the password (done in SEN-20).
 - The middleware is pure ASGI and is installed by `install_sentinel` (done in SEN-22).
-- `on_event` puts the event on a bounded queue that a background writer drains in batches (SEN-25).
+- The audit sink folds events into a bounded set of groups that a background writer stores in batches (done in SEN-25).
 
 **Processes.** SentinelAPI has none of its own: it runs inside the app's process. With several workers or replicas, the counters must live in Redis; the memory backend counts per process (SEN-27 refuses it in production unless explicitly allowed). The demo stack runs the API, Redis and Postgres, plus a `migrate` container from SEN-29.
 
@@ -172,13 +172,14 @@ One table, `sentinel_security_events`, written by the audit sink. SQLite in deve
 | `detail` | varchar(512); named the targeted account for brute force and quoted parts of tokens until SEN-24 | Never a username, an address or token material: done (SEN-24, AR-13) |
 | `occurred_at` | double precision (epoch seconds) until SEN-23 | timestamptz: done (SEN-23) |
 | `created_at` | timestamp without time zone, from `datetime.utcnow`, until SEN-23 | timestamptz, `now()` by default: done (SEN-23) |
-| `count` | — | integer ≥ 1: identical events folded into one row (SEN-25) |
-| `last_occurred_at` | — | timestamptz (SEN-25) |
+| `count` | — until SEN-25 | integer ≥ 1 (CHECK): identical events folded into one row. Done (SEN-25) |
+| `last_occurred_at` | — until SEN-25 | timestamptz: the last of the folded events. Done (SEN-25) |
 
 **Rules.**
 
 - The table is created by a migration shipped with the package, never by `create_all` at startup (SEN-23, ADR-0006). The history keeps its own version table, `sentinel_alembic_version`, so it shares a database with the app's own migrations. `sentinel migrate` runs it; a sink that starts on an unmigrated database logs `audit_table_not_migrated` once, and requests carry on.
 - On Postgres, `sentinel migrate --app-role <role>` (or `SENTINEL_AUDIT_APP_ROLE`) grants the app's role INSERT and SELECT on the table and nothing else, so the trail is append-only for the app (SEN-23, AR-12); retention runs as the owner role (SEN-24).
+- **Write path (SEN-25).** The sink never writes inside the request. Identical events (same fingerprint, account, type, level and path) within `SENTINEL_AUDIT_AGGREGATE_SECONDS` become one group; a background task writes the groups whose window has closed, once a second, in one transaction. A failed write keeps the groups for the next attempt, within `SENTINEL_AUDIT_QUEUE_SIZE`; past it, events are dropped and `audit_events_dropped` is logged. The app's shutdown drains what is pending. The log line, written at once, stays the complete record.
 - `sentinel purge`, run as the owner role, deletes rows older than `SENTINEL_AUDIT_RETENTION_DAYS` (default 90) (SEN-24).
 - The keyed hashes use `SENTINEL_AUDIT_HASH_KEY` (HMAC-SHA256, 32 hex characters); without it, a random key per process, so correlation stops at a restart (SEN-24). The security log carries the same hashes.
 
@@ -212,7 +213,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 | `SENTINEL_AUDIT_APP_ROLE` | empty | Postgres role granted INSERT and SELECT only by `sentinel migrate` | Built (SEN-23) |
 | `SENTINEL_AUDIT_HASH_KEY` | none: a random key per process; required in production from SEN-27 | Key of the hashes that stand for addresses, accounts and fingerprints in the audit trail and the log | Built (SEN-24) |
 | `SENTINEL_AUDIT_RETENTION_DAYS` | `90` | What `sentinel purge` keeps | Built (SEN-24) |
-| `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Write path | Planned (SEN-25) |
+| `SENTINEL_AUDIT_QUEUE_SIZE`, `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `10000`, `60` | Groups waiting to be written (past it, new ones are dropped and the drop logged); the window in which identical events become one row | Built (SEN-25) |
 | `SENTINEL_OPERATOR_TOKEN` | none | Protects the demo's events API | Planned (SEN-26) |
 | `SENTINEL_ALERT_WEBHOOK_URL` | empty | CRITICAL alerts | Planned (SEN-31) |
 | `SENTINEL_DEMO_MODE` | `false` | Turns on the attack console | Planned (SEN-32) |

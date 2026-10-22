@@ -30,6 +30,10 @@ class SentinelSettings(BaseSettings):
     audit_hash_key: str | None = None
     # `sentinel purge` deletes events older than this
     audit_retention_days: int = 90
+    # Identical events within this window become one row with a count (ADR-0006)
+    audit_aggregate_seconds: int = 60
+    # Groups waiting to be written; past it, new ones are dropped and the drop is logged
+    audit_queue_size: int = 10_000
 
     # Proxies whose X-Forwarded-For is believed, as CIDRs (ADR-0004). Empty: no
     # proxy, so the direct peer is the client and the header is ignored.

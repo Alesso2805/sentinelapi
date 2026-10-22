@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Dialect, String, func
+from sqlalchemy import CheckConstraint, DateTime, Dialect, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
 
@@ -47,6 +47,7 @@ class SecurityEventLog(Base):
         CheckConstraint(
             _one_of("threat_level", ThreatLevel), name="ck_sentinel_security_events_threat_level"
         ),
+        CheckConstraint("count >= 1", name="ck_sentinel_security_events_count"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -58,5 +59,8 @@ class SecurityEventLog(Base):
     subject_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     path: Mapped[str] = mapped_column(String(256))
     detail: Mapped[str] = mapped_column(String(512))
+    # Identical events folded into one row (ADR-0006): the first one's time, how many, the last one's time.
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
+    count: Mapped[int] = mapped_column(Integer)
+    last_occurred_at: Mapped[datetime] = mapped_column(UTCDateTime)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())

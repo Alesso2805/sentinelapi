@@ -118,7 +118,17 @@ class Sentinel:
             clock=clock,
         )
         self.pseudonymize = Pseudonymizer(settings.audit_hash_key)
-        self.audit = DatabaseAuditSink(settings.database_url, self.pseudonymize) if settings.audit else None
+        self.audit = (
+            DatabaseAuditSink(
+                settings.database_url,
+                self.pseudonymize,
+                aggregate_seconds=settings.audit_aggregate_seconds,
+                max_groups=settings.audit_queue_size,
+                clock=clock,
+            )
+            if settings.audit
+            else None
+        )
         self.login_guard = LoginGuard(self)
         self._on_event = on_event
 

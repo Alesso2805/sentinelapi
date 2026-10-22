@@ -3,8 +3,9 @@
 install:
 	uv sync --all-extras
 
+# Migrates, then starts the API; --wait returns once every healthcheck is green
 up:
-	docker compose up -d --build
+	docker compose up -d --build --wait
 
 down:
 	docker compose down

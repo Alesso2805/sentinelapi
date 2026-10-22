@@ -20,7 +20,7 @@ Options 2 or 3, decided by the product owner when SEN-33 starts, with the same s
 
 - `deploy/docker-compose.prod.yml` on top of `docker-compose.yml`, removing every published port except Caddy's (SEN-29).
 - Caddy terminates HTTPS and routes the hostname (for example `sentinelapi.duckdns.org`) to the demo app.
-- `SENTINEL_TRUSTED_PROXIES` is set to Caddy's Docker network. Without it, every visitor would arrive from Caddy's address and share one rate-limit bucket (ADR-0004).
+- `SENTINEL_TRUSTED_PROXIES` covers the private ranges Docker networks use. The API publishes no port, so only containers on the stack's own network reach it, which means Caddy; a fixed subnet for that network collided with other Docker networks in the first rehearsal (SEN-29). Without trusting Caddy, every visitor would arrive from its address and share one rate-limit bucket (ADR-0004).
 - `SENTINEL_ENV=production` and `SENTINEL_DEMO_MODE=true`, with secrets in the server's `.env` only.
 
 ## Consequences

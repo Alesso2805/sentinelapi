@@ -111,3 +111,45 @@ jobs:
       - name: Diagnostics
         if: failure()
         run: docker logs sentinelapi
+
+  compose:
+    name: Full stack from an empty database
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read # to pull the uv image from ghcr.io as an authenticated user
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Log in to ghcr.io to pull the uv image
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      # The server overlay must stay valid even though CI never deploys it.
+      - name: deploy/docker-compose.prod.yml is valid
+        env:
+          SENTINEL_HOSTNAME: sentinel.example.org
+          SENTINEL_JWT_SECRET: ci-only-jwt-secret-0123456789abcdef
+          SENTINEL_AUDIT_HASH_KEY: ci-only-audit-hash-key-0123456789ab
+          SENTINEL_OPERATOR_TOKEN: ci-only-operator-token
+          POSTGRES_PASSWORD: ci-only
+          SENTINEL_APP_DB_PASSWORD: ci-only
+        run: docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml config --quiet
+      # --wait fails if any healthcheck does not turn green.
+      - run: docker compose up -d --build --wait --wait-timeout 300
+      - name: migrate finished successfully
+        run: test "$(docker compose ps -a migrate --format '{{.ExitCode}}')" = "0"
+      - name: Smoke test
+        run: |
+          curl --fail --silent localhost:8000/health
+          login() { curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8000/auth/login \
+            -H 'Content-Type: application/json' -d "{\"username\":\"alice@example.com\",\"password\":\"$1\"}"; }
+          for _ in $(seq 1 8); do login wrong >/dev/null; done
+          test "$(login correct-horse-battery-staple)" = 429  # the block holds against the right password
+          curl --fail -s -H 'Authorization: Bearer dev-operator-token' 'localhost:8000/security/events?threat_type=brute_force' \
+            | python3 -c "import json, sys; assert json.load(sys.stdin)['total'] >= 1"
+          # AR-12 in the real stack: the API's role cannot rewrite the audit trail.
+          ! docker compose exec -T postgres psql -U sentinel_app -d sentinelapi -c "DELETE FROM sentinel_security_events"
+      - name: Diagnostics
+        if: failure()
+        run: docker compose ps -a && docker compose logs --tail 100
+      - if: always()
+        run: docker compose down -v

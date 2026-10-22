@@ -1,0 +1,13 @@
+# The one way into a SentinelAPI server (ADR-0009): one hostname, the demo app behind it.
+# SENTINEL_HOSTNAME=localhost serves HTTPS with Caddy's internal CA, for a rehearsal;
+# a real hostname gets Let's Encrypt.
+
+{$SENTINEL_HOSTNAME} {
+	encode zstd gzip
+
+	header -Server
+
+	# Caddy replaces the client's own X-Forwarded-For with the address it saw,
+	# which is the only hop the API believes (ADR-0004).
+	reverse_proxy api:8000
+}

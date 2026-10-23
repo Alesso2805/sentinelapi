@@ -231,8 +231,8 @@ The demo app is not part of the library; it is how a visitor and the tests see t
 | POST | `/auth/refresh` | Bearer refresh token | New pair; a replayed token is stopped by the middleware with 403 |
 | GET | `/me` | Bearer access token | `Me {user}` |
 | GET | `/security/events` | Bearer `SENTINEL_OPERATOR_TOKEN` (public until SEN-26) | `EventPage {total, items}`, newest first; filters `threat_type`, `threat_level`, `since`; `offset`, `limit` ≤ 100. Every level, each row with its `count` and keyed hashes |
-| GET | `/` | Public, only with `SENTINEL_DEMO_MODE` | The console page, with a strict Content Security Policy; sets the console's session cookie (HttpOnly, SameSite=Strict). Built (SEN-32) |
-| POST | `/demo/scenarios/{name}` | The console's session cookie, only with `SENTINEL_DEMO_MODE` | `ScenarioResult {scenario, title, summary, steps}` for `burst`, `stuffing` or `replay`, run server-side with synthetic sources (RFC 5737) on a fresh sandbox; 10 per hour per address, then 429 with `Retry-After`. Built (SEN-32) |
+| GET | `/` | Public, only with `SENTINEL_DEMO_MODE` | The console page, with a strict Content Security Policy; sets the console's session cookie (HttpOnly, SameSite=Strict). In English or Spanish: the browser's languages decide until the visitor picks one, which `localStorage` remembers. Built (SEN-32, SEN-41) |
+| POST | `/demo/scenarios/{name}` | The console's session cookie, only with `SENTINEL_DEMO_MODE` | `ScenarioResult {scenario, title, summary, steps}`, every text in both languages (`{en, es}`, SEN-41) for `burst`, `stuffing` or `replay`, run server-side with synthetic sources (RFC 5737) on a fresh sandbox; 10 per hour per address, then 429 with `Retry-After`. Built (SEN-32) |
 | GET | `/demo/events` | The console's session cookie, only with `SENTINEL_DEMO_MODE` | Server-sent events with the visitor's own runs' events, a keep-alive every 15 s. Built (SEN-32) |
 
 The demo user is `alice@example.com` with the password `correct-horse-battery-staple`. It is public on purpose and exists only in the demo app.

@@ -4,6 +4,10 @@ All notable changes to SentinelAPI are recorded here. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+
+- The demo's attack console speaks Spanish too. The browser's languages decide until the visitor picks one with its ES/EN switch, which is remembered.
+
 ## [1.0.0] - 2026-10-22
 
 The first release: everything since the prototype of 2026-08-31 (0.1.0, never published). It is published on PyPI as `fastapi-sentinel`; the package it installs is `sentinelapi`.

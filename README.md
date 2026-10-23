@@ -45,7 +45,7 @@ SentinelAPI catches both, and does standard rate limiting too. Each detector is 
 - credential stuffing from 20 addresses;
 - a replayed refresh token.
 
-You see each request with its verdict, and the audit trail as it is written: your own events only, and 10 attacks an hour per visitor. The same console runs locally with `docker compose up --build --wait`, at http://localhost:8000/.
+You see each request with its verdict, and the audit trail as it is written, in English or Spanish: your own events only, and 10 attacks an hour per visitor. The same console runs locally with `docker compose up --build --wait`, at http://localhost:8000/.
 
 | | |
 | --- | --- |
@@ -350,7 +350,7 @@ Planned in [docs/BACKLOG.md](docs/BACKLOG.md):
 4. Done: a production-ready stack (safe settings, a reproducible image, one command, readiness and request ids), webhook alerts on CRITICAL events and the attack console.
 5. Done: the deployed demo, runbooks, a measured overhead, the package on PyPI, the demo's OpenAPI document, this README and the changelog: release 1.0.0.
 
-Next, optional stories: a sliding-window limiter (SEN-39), replay detection for tokens signed with a key pair (SEN-40), the console in Spanish (SEN-41) and Prometheus metrics (SEN-42).
+Next, optional stories: a sliding-window limiter (SEN-39), replay detection for tokens signed with a key pair (SEN-40), and Prometheus metrics (SEN-42).
 
 ## Documentation
 

@@ -475,12 +475,10 @@
             "title": "Scenario"
           },
           "title": {
-            "type": "string",
-            "title": "Title"
+            "$ref": "#/components/schemas/Text"
           },
           "summary": {
-            "type": "string",
-            "title": "Summary"
+            "$ref": "#/components/schemas/Text"
           },
           "steps": {
             "items": {
@@ -510,8 +508,7 @@
             "title": "Source"
           },
           "request": {
-            "type": "string",
-            "title": "Request"
+            "$ref": "#/components/schemas/Text"
           },
           "status": {
             "type": "integer",
@@ -552,13 +549,12 @@
           "detail": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/Text"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Detail"
+            ]
           },
           "retry_after": {
             "anyOf": [
@@ -581,6 +577,25 @@
           "outcome"
         ],
         "title": "Step"
+      },
+      "Text": {
+        "properties": {
+          "en": {
+            "type": "string",
+            "title": "En"
+          },
+          "es": {
+            "type": "string",
+            "title": "Es"
+          }
+        },
+        "type": "object",
+        "required": [
+          "en",
+          "es"
+        ],
+        "title": "Text",
+        "description": "The same message in each language the console speaks."
       },
       "ThreatLevel": {
         "type": "string",

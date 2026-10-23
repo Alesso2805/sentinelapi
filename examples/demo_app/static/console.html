@@ -9,11 +9,17 @@
   <script src="/static/console.js" defer></script>
 </head>
 <body>
-  <a class="skip" href="#attacks-title">Skip to the attacks</a>
+  <a class="skip" href="#attacks-title" data-i18n="skip">Skip to the attacks</a>
   <header class="masthead">
-    <p class="brand">SentinelAPI</p>
-    <h1>Launch an attack and watch it get caught</h1>
-    <p class="lede">
+    <div class="topbar">
+      <p class="brand">SentinelAPI</p>
+      <div class="languages" role="group" aria-label="Language" data-i18n-label="language">
+        <button type="button" data-language="en" lang="en" aria-label="English" aria-pressed="true">EN</button>
+        <button type="button" data-language="es" lang="es" aria-label="Español" aria-pressed="false">ES</button>
+      </div>
+    </div>
+    <h1 data-i18n="heading">Launch an attack and watch it get caught</h1>
+    <p class="lede" data-i18n="lede">
       Each button runs one attack on the server, against SentinelAPI's real detectors, from simulated
       addresses. Every request it makes and the verdict it gets appear below, with what SentinelAPI
       reported to its audit trail.
@@ -22,39 +28,39 @@
 
   <main>
     <section aria-labelledby="attacks-title">
-      <h2 id="attacks-title">Attacks</h2>
+      <h2 id="attacks-title" data-i18n="attacks">Attacks</h2>
       <ul class="attacks">
         <li class="attack">
-          <h3>Burst</h3>
-          <p>Seventy requests in a moment from one address, against a limit of 60 per minute.</p>
-          <button type="button" data-scenario="burst">Run the burst</button>
+          <h3 data-i18n="burst.title">Burst</h3>
+          <p data-i18n="burst.text">Seventy requests in a moment from one address, against a limit of 60 per minute.</p>
+          <button type="button" data-scenario="burst" data-i18n="burst.run">Run the burst</button>
         </li>
         <li class="attack">
-          <h3>Credential stuffing</h3>
-          <p>One account, one wrong password from each of 20 addresses, so no address fails twice. Then its owner signs in with the right password.</p>
-          <button type="button" data-scenario="stuffing">Run credential stuffing</button>
+          <h3 data-i18n="stuffing.title">Credential stuffing</h3>
+          <p data-i18n="stuffing.text">One account, one wrong password from each of 20 addresses, so no address fails twice. Then its owner signs in with the right password.</p>
+          <button type="button" data-scenario="stuffing" data-i18n="stuffing.run">Run credential stuffing</button>
         </li>
         <li class="attack">
-          <h3>Token replay</h3>
-          <p>The owner redeems a single-use refresh token; then a stolen copy is replayed from another address.</p>
-          <button type="button" data-scenario="replay">Run the replay</button>
+          <h3 data-i18n="replay.title">Token replay</h3>
+          <p data-i18n="replay.text">The owner redeems a single-use refresh token; then a stolen copy is replayed from another address.</p>
+          <button type="button" data-scenario="replay" data-i18n="replay.run">Run the replay</button>
         </li>
       </ul>
     </section>
 
     <section aria-labelledby="result-title">
-      <h2 id="result-title">What happened</h2>
+      <h2 id="result-title" data-i18n="result">What happened</h2>
       <p id="summary" class="summary" role="status">Run an attack to see each of its requests and their verdicts.</p>
       <div class="table-wrap">
         <table id="steps" hidden>
-          <caption class="visually-hidden">The requests of the last attack and SentinelAPI's verdict on each</caption>
+          <caption class="visually-hidden" data-i18n="caption">The requests of the last attack and SentinelAPI's verdict on each</caption>
           <thead>
             <tr>
               <th scope="col">#</th>
-              <th scope="col">From</th>
-              <th scope="col">Request</th>
-              <th scope="col">Answer</th>
-              <th scope="col">Verdict</th>
+              <th scope="col" data-i18n="column.from">From</th>
+              <th scope="col" data-i18n="column.request">Request</th>
+              <th scope="col" data-i18n="column.answer">Answer</th>
+              <th scope="col" data-i18n="column.verdict">Verdict</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -63,8 +69,8 @@
     </section>
 
     <section aria-labelledby="audit-title">
-      <h2 id="audit-title">Audit trail, live</h2>
-      <p class="hint">What SentinelAPI reported for your runs, as it happened. Only you see these.</p>
+      <h2 id="audit-title" data-i18n="audit">Audit trail, live</h2>
+      <p class="hint" data-i18n="audit.hint">What SentinelAPI reported for your runs, as it happened. Only you see these.</p>
       <p id="stream-state" class="hint">Connecting…</p>
       <ol id="events" class="events"></ol>
     </section>
@@ -72,9 +78,10 @@
 
   <footer class="footer">
     <p>
-      SentinelAPI is open source: <a href="https://github.com/Alesso2805/sentinelapi">source and documentation</a>.
-      The addresses above come from the ranges reserved for documentation (RFC 5737). Real visitors'
-      addresses are kept only as keyed hashes.
+      <span data-i18n="footer.open">SentinelAPI is open source:</span>
+      <a href="https://github.com/Alesso2805/sentinelapi" data-i18n="footer.source">source and documentation</a>.
+      <span data-i18n="footer.addresses">The addresses above come from the ranges reserved for documentation
+      (RFC 5737). Real visitors' addresses are kept only as keyed hashes.</span>
     </p>
   </footer>
 </body>

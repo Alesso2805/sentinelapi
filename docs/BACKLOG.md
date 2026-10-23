@@ -2,7 +2,7 @@
 
 Oct 22, 2026 · @Alessandro David
 
-42 stories in 6 epics (E0 to E5). E0 records what was built on August 31, 2026, retroactively, so that the audit can check each criterion against a test; SEN-09 is the documentation of October 22. E1 to E5 come from the audit of the same day (`docs/AUDIT.md`, kept locally since SEN-38; the README's Known limitations sums it up): every blocking or important finding is a story. The rest come from the README's roadmap (migrations, a dashboard, notifications on CRITICAL events) and from what the portfolio needs to link the project: a public repository and a live demo. MoSCoW priority (M = Must, S = Should, C = Could) and estimate in points (1, 2, 3, 5, 8).
+43 stories in 6 epics (E0 to E5). E0 records what was built on August 31, 2026, retroactively, so that the audit can check each criterion against a test; SEN-09 is the documentation of October 22. E1 to E5 come from the audit of the same day (`docs/AUDIT.md`, kept locally since SEN-38; the README's Known limitations sums it up): every blocking or important finding is a story. The rest come from the README's roadmap (migrations, a dashboard, notifications on CRITICAL events) and from what the portfolio needs to link the project: a public repository and a live demo. MoSCoW priority (M = Must, S = Should, C = Could) and estimate in points (1, 2, 3, 5, 8).
 
 **Correctness before exposure** (proposal, 2026-10-22). SentinelAPI is a security library: a public demo with a known bypass would be worse than no demo. So the detectors are fixed (Sprint 2) and the audit trail made private (Sprint 3) before anything is deployed (Sprint 5).
 
@@ -54,6 +54,7 @@ Oct 22, 2026 · @Alessandro David
 | SEN-40 | E2 Detection that holds | As an integrator I want replay detection for tokens signed with a key pair | RS256 and ES256 with a public key or a JWKS URL, cached | C | 2 | — | Optional |
 | SEN-41 | E4 Production | As a visitor I want the attack console in my language | Spanish and English, following the browser, as Willay and VeriLedger do | C | 2 | — | Optional |
 | SEN-42 | E4 Production | As an operator I want verdict counters in my metrics | `/metrics` in Prometheus format: events by type and level, blocked requests, audit queue depth and dropped events | C | 2 | — | Optional |
+| SEN-43 | E2 Detection that holds | As an operator I want to hear about an account under a sustained attack | Found while checking the README's claims for SEN-37: with `lock`, a refused attempt was not counted, so a locked account stayed at its 8th failure, never reached CRITICAL (15), and the webhook never heard of credential stuffing, though SPEC's verdict table said it would. Attempts refused on a locked account count against it without moving its window; in shadow mode an attempt still counts once; `signal` unchanged; the webhook holds alerts back per account when the event has one, so stuffing from many addresses is one alert, not one per address | M | 2 | 5 | Done (#29) |
 
 ## Sprint plan
 
@@ -66,7 +67,7 @@ Oct 22, 2026 · @Alessandro David
 | 2 | Nov 9 – 22 | Detectors that hold: the same windows everywhere, limits that mean what they say, no cheap evasion | SEN-17 to 21 | 19 |
 | 3 | Nov 23 – Dec 6 | A three-line integration and an audit trail that is migrated, private and flood-proof | SEN-22 to 26 | 18 |
 | 4 | Dec 7 – 20 | A production-ready stack and the attack console | SEN-27 to 32 | 18 |
-| 5 | Dec 21, 2026 – Jan 3, 2027 | A deployed demo and release 1.0.0 | SEN-33 to 37 | 14 |
+| 5 | Dec 21, 2026 – Jan 3, 2027 | A deployed demo and release 1.0.0 | SEN-33 to 37, SEN-43 | 16 |
 
 **Order inside Sprint 1.** SEN-11 first (nothing installs reproducibly without it; its first step is #1), then SEN-12, SEN-13, SEN-14, SEN-15, and SEN-16 last, so the cleanup runs against green checks.
 

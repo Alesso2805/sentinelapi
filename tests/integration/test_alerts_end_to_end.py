@@ -1,4 +1,5 @@
-"""SEN-31 end to end: a replayed refresh token in the demo reaches a real HTTP receiver."""
+"""SEN-31 end to end: a replayed refresh token, or credential stuffing (SEN-43), in the demo
+reaches a real HTTP receiver."""
 
 from __future__ import annotations
 
@@ -48,3 +49,18 @@ async def test_a_replayed_token_reaches_the_webhook_once(
     assert len(received) == 1
     assert received[0]["content_type"] == "application/json"
     assert "CRITICAL jwt replay on /auth/refresh" in received[0]["text"]
+
+
+async def test_credential_stuffing_reaches_the_webhook_once(
+    make_client: ClientFactory, receiver: tuple[str, list[dict[str, Any]]]
+) -> None:
+    """SEN-43: one account, a new address every time, attempts going on after the lock."""
+    url, received = receiver
+    wrong = {**ALICE_LOGIN, "password": "wrong"}
+    # httpx's ASGI transport presents every request as coming from 127.0.0.1: here, the proxy.
+    async with make_client(alert_webhook_url=url, trusted_proxies=["127.0.0.1/32"]) as client:
+        for i in range(20):
+            await client.post("/auth/login", json=wrong, headers={"X-Forwarded-For": f"198.51.100.{i}"})
+    assert len(received) == 1
+    assert "CRITICAL brute force on /auth/login" in received[0]["text"]
+    assert ALICE_LOGIN["username"] not in received[0]["text"]

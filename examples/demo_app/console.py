@@ -31,7 +31,7 @@ from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.staticfiles import StaticFiles
 
 from sentinelapi.detectors.fingerprint import build_fingerprint
-from sentinelapi.domain.entities import SecurityEvent
+from sentinelapi.domain.entities import SecurityEvent, ThreatLevel
 from sentinelapi.integration import Sandbox, Sentinel
 
 from .auth import _issue_tokens, get_sentinel
@@ -186,6 +186,12 @@ async def stuffing(sandbox: Sandbox, sentinel: Sentinel, report: Report) -> Scen
     )
 
     locked_at = next(s.number for s in steps if s.outcome == "blocked")
+    critical_at = next((s.number for s in steps if s.level == ThreatLevel.CRITICAL.value), None)
+    going_on = (
+        f" From the {critical_at}th attempt the attack that goes on is CRITICAL: the webhook hears of it."
+        if critical_at
+        else ""
+    )
     minutes = sentinel.settings.brute_force_window_seconds // 60
     owner_step = steps[-1]
     ending = (
@@ -199,7 +205,8 @@ async def stuffing(sandbox: Sandbox, sentinel: Sentinel, report: Report) -> Scen
         title="Credential stuffing",
         summary=(
             f"No address failed more than once, yet the {locked_at}th failure locked the account: "
-            f"the next {20 - locked_at} attempts were refused before their password was checked. {ending}"
+            f"the next {20 - locked_at} attempts were refused before their password was checked."
+            f"{going_on} {ending}"
         ),
         steps=steps,
     )

@@ -76,6 +76,10 @@ class BruteForceDetector:
             return await self._event(fingerprint, path, ThreatLevel.HIGH, detail, keys, blocked=keys.source)
         account_failures = await self._backend.get(keys.account)
         if account_failures >= self._per_username_high:
+            if self._account_action is AccountAction.LOCK:
+                # A refused attempt still counts against the account, so an attack that
+                # goes on reaches CRITICAL; the window does not move (ADR-0002).
+                account_failures = await self._backend.incr_with_expiry(keys.account, self._window_seconds)
             return await self._account_event(fingerprint, path, account_failures, keys, refusing=True)
         return None
 
@@ -84,7 +88,11 @@ class BruteForceDetector:
     ) -> SecurityEvent | None:
         keys = self._keys(fingerprint, username)
         source_failures = await self._backend.incr_with_expiry(keys.source, self._window_seconds)
-        account_failures = await self._backend.incr_with_expiry(keys.account, self._window_seconds)
+        account_failures = await self._backend.get(keys.account)
+        # On a locked account, `check` already counted this attempt; in shadow mode
+        # it gets here too, and must not count twice.
+        if self._account_action is not AccountAction.LOCK or account_failures < self._per_username_high:
+            account_failures = await self._backend.incr_with_expiry(keys.account, self._window_seconds)
         await self._backend.incr_with_expiry(keys.pair, self._window_seconds)
 
         # The account signal takes priority: it's the stronger indicator of a
@@ -132,7 +140,7 @@ class BruteForceDetector:
             return await self._event(fingerprint, path, ThreatLevel.MEDIUM, detail, keys, challenge=True)
         level = ThreatLevel.CRITICAL if failures >= self._per_username_critical else ThreatLevel.HIGH
         if refusing:
-            detail = f"account locked after {failures} failed attempts"
+            detail = f"account locked, {failures} attempts against it in this window"
         else:
             detail = f"{failures} failed attempts against one account (possible credential stuffing)"
         return await self._event(fingerprint, path, level, detail, keys, blocked=keys.account)

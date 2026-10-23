@@ -52,14 +52,15 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
 
     async def test_credential_stuffing_from_many_ips_is_caught_by_username_axis(self) -> None:
         """The scenario a naive per-IP-only limiter would miss entirely:
-        one attacker, one target account, eight different source IPs."""
+        one attacker, one target account, five different source IPs."""
         event = None
-        for i in range(8):
+        for i in range(5):
             fp = build_fingerprint(f"203.0.113.{i}", "ua")  # different IP every time
             event = await self.detector.record_failure(fp, "bob@example.com")
 
         assert event is not None
-        self.assertEqual(event.threat_level, ThreatLevel.CRITICAL)
+        self.assertEqual(event.threat_level, ThreatLevel.HIGH)
+        self.assertIn("against one account", event.detail)
         self.assertNotIn("bob@example.com", event.detail)
 
     async def test_a_blocked_source_is_refused_even_with_the_right_password(self) -> None:
@@ -89,16 +90,55 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(verdict.is_blocking())
         self.assertTrue(verdict.challenge_required)
 
+    async def attack(self, *, shadow: bool = False) -> list[ThreatLevel | None]:
+        """Ten wrong passwords for one account, each from a new address, the way the
+        login guard runs them: check first, and record the failure unless refused
+        (in shadow mode nothing is refused, so every failure is recorded)."""
+        levels = []
+        for i in range(10):
+            fp = build_fingerprint(f"198.51.100.{i}", "ua")
+            verdict = await self.detector.check(fp, "bob@example.com")
+            event = None
+            if verdict is None or shadow:
+                event = await self.detector.record_failure(fp, "bob@example.com")
+            levels.append(v.threat_level if (v := verdict or event) else None)
+        return levels
+
+    async def test_an_attack_that_goes_on_against_a_locked_account_turns_critical(self) -> None:
+        """SEN-43: refused attempts count too. Counting only failures, a locked
+        account stayed at its 5th and never reached CRITICAL, nor the webhook."""
+        expected = [None] * 4 + [ThreatLevel.HIGH] * 3 + [ThreatLevel.CRITICAL] * 3
+        self.assertEqual(await self.attack(), expected)
+        self.clock.advance(901)  # the refusals did not move the window
+        owner = build_fingerprint("192.0.2.1", "owner")
+        self.assertIsNone(await self.detector.check(owner, "bob@example.com"))
+
+    async def test_in_shadow_mode_an_attempt_counts_once(self) -> None:
+        """Checked and then recorded, an attempt must not count twice: shadow mode
+        has to show the levels enforcement would produce."""
+        expected = [None] * 4 + [ThreatLevel.HIGH] * 3 + [ThreatLevel.CRITICAL] * 3
+        self.assertEqual(await self.attack(shadow=True), expected)
+
+    async def test_in_signal_mode_a_check_counts_nothing(self) -> None:
+        detector = self.make_detector(account_action=AccountAction.SIGNAL)
+        for i in range(5):
+            await detector.record_failure(build_fingerprint(f"198.51.100.{i}", "ua"), "bob@example.com")
+        for _ in range(10):
+            await detector.check(build_fingerprint("192.0.2.1", "owner"), "bob@example.com")
+        event = await detector.record_failure(build_fingerprint("198.51.100.99", "ua"), "bob@example.com")
+        assert event is not None
+        self.assertTrue(event.detail.startswith("6 failed attempts"))
+
     async def test_case_and_spaces_do_not_split_one_account(self) -> None:
         """The audit's probe 4: four spellings of one account used to count apart."""
         spellings = ["bob@example.com", "Bob@example.com", " BOB@EXAMPLE.COM", "bob@Example.com "]
         event = None
-        for i in range(8):
+        for i in range(5):
             event = await self.detector.record_failure(
                 build_fingerprint(f"198.51.100.{i}", "ua"), spellings[i % 4]
             )
         assert event is not None
-        self.assertEqual(event.threat_level, ThreatLevel.CRITICAL)
+        self.assertIn("5 failed attempts against one account", event.detail)
 
     async def test_a_case_sensitive_app_can_bring_its_own_normalizer(self) -> None:
         detector = self.make_detector(normalize=str.strip)

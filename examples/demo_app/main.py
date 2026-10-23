@@ -92,7 +92,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     fresh app with their own counters and their own database."""
     settings = settings or SentinelSettings()
     configure_logging(json_output=settings.env == "production")
-    app = FastAPI(title="SentinelAPI demo", version=version("sentinelapi"))
+    app = FastAPI(title="SentinelAPI demo", version=version("fastapi-sentinel"))
     install_sentinel(app, settings)
     app.include_router(auth_router)
     if settings.demo_mode:

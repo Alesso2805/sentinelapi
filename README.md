@@ -3,7 +3,7 @@
 **Threat-detection middleware for FastAPI.** Add it to an existing app and get fixed-window rate limiting, brute-force detection that also catches credential stuffing, and single-use refresh tokens. Every verdict goes to a private, queryable audit trail.
 
 [![Live demo](https://img.shields.io/badge/live%20demo-sentinelaapi.duckdns.org-2EA44F)](https://sentinelaapi.duckdns.org)
-[![PyPI](https://img.shields.io/pypi/v/sentinelapi?color=3776AB)](https://pypi.org/project/sentinelapi/)
+[![PyPI](https://img.shields.io/pypi/v/fastapi-sentinel?color=3776AB)](https://pypi.org/project/fastapi-sentinel/)
 [![CI](https://github.com/Alesso2805/sentinelapi/actions/workflows/ci.yml/badge.svg)](https://github.com/Alesso2805/sentinelapi/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%E2%80%933.15-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -15,7 +15,7 @@
 
 ![The attack console after credential stuffing: 20 addresses fail once each against one account, and the 8th failure locks it](docs/images/console-stuffing.png)
 
-> **Status:** 1.0.0, [on PyPI](https://pypi.org/project/sentinelapi/), with the demo live at **[sentinelaapi.duckdns.org](https://sentinelaapi.duckdns.org)**. See the [changelog](CHANGELOG.md).
+> **Status:** 1.0.0, [on PyPI as `fastapi-sentinel`](https://pypi.org/project/fastapi-sentinel/), with the demo live at **[sentinelaapi.duckdns.org](https://sentinelaapi.duckdns.org)**. See the [changelog](CHANGELOG.md).
 
 ## What it catches
 
@@ -55,10 +55,10 @@ You see each request with its verdict, and the audit trail as it is written: you
 ## Use it in your app
 
 ```bash
-pip install "sentinelapi[sqlite]"     # or [postgres], for the audit trail's database; add redis for several processes
+pip install "fastapi-sentinel[sqlite]"     # or [postgres], for the audit trail's database; add redis for several processes
 ```
 
-Then create the audit table with `sentinel migrate` (it reads `SENTINEL_DATABASE_URL`), and:
+The distribution is `fastapi-sentinel`, since PyPI holds `sentinelapi` too close to another project's name; the package you import is `sentinelapi`. Then create the audit table with `sentinel migrate` (it reads `SENTINEL_DATABASE_URL`), and:
 
 ```python
 from fastapi import FastAPI, HTTPException, Request

@@ -19,6 +19,7 @@ The README sells SentinelAPI as something to "drop into an existing app", but th
 Option 2:
 
 - The distribution name is checked on PyPI before SEN-36 starts. If `sentinelapi` is taken, the fallback is `fastapi-sentinel` or another free name the product owner picks. The import name stays `sentinelapi` either way.
+  - **Applied on 2026-10-22:** `sentinelapi` was free as written, but PyPI refused it as too similar to the existing `sentinel-api` (it compares names without separators). The product owner chose the fallback: the distribution is `fastapi-sentinel`.
 - The wheel contains only the `sentinelapi` package, as `[tool.hatch.build.targets.wheel]` already says; the demo app is not shipped.
 - Extras stay `redis`, `postgres` and `sqlite`; `sqlalchemy[asyncio]` becomes a required dependency (SEN-11), since the audit sink needs it.
 - `py.typed` is shipped (SEN-12).

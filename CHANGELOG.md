@@ -6,7 +6,7 @@ All notable changes to SentinelAPI are recorded here. The format follows [Keep a
 
 ## [1.0.0] - 2026-10-22
 
-The first release: everything since the prototype of 2026-08-31 (0.1.0, never published).
+The first release: everything since the prototype of 2026-08-31 (0.1.0, never published). It is published on PyPI as `fastapi-sentinel`; the package it installs is `sentinelapi`.
 
 ### Added
 

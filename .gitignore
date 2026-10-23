@@ -21,3 +21,6 @@ graphify-out/
 # Internal working notes: the architecture audit and the comments awaiting a decision
 docs/AUDIT.md
 docs/COMMENTS_REVIEW.md
+
+# Database dumps of deploy/backup.sh
+backups/

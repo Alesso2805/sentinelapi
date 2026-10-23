@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
 from httpx import ASGITransport, AsyncClient
 
@@ -118,3 +118,22 @@ async def test_the_installer_leaves_sentinel_in_app_state() -> None:
     app = FastAPI()
     sentinel = install_sentinel(app, settings())
     assert app.state.sentinel is sentinel
+
+
+async def test_in_signal_mode_the_guard_hands_the_app_a_challenge() -> None:
+    app = FastAPI()
+    sentinel = install_sentinel(app, settings(brute_force_account_action="signal"))
+    asked: list[bool] = []
+
+    @app.post("/login/{username}")
+    async def login(username: str, request: Request) -> dict[str, bool]:
+        verdict = await sentinel.login_guard.check(request, username)
+        asked.append(bool(verdict and verdict.challenge_required))
+        await sentinel.login_guard.failed(request, username)
+        return {}
+
+    async with running(app) as client:
+        for _ in range(9):
+            await client.post("/login/bob")
+    # Never locked; from the 8th failure on, the app is told to ask for a challenge.
+    assert asked == [False] * 8 + [True]

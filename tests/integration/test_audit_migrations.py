@@ -128,6 +128,7 @@ async def test_the_app_role_cannot_rewrite_the_audit_trail() -> None:  # AR-12
         await sink(an_event())
         await sink.flush(everything=True)  # INSERT works
         assert len(await sink.recent_critical()) == 1  # SELECT works
+        assert await sink.ready()  # and it can tell the schema is migrated
         await sink.close()
         for statement in (f"UPDATE {TABLE} SET detail = 'rewritten'", f"DELETE FROM {TABLE}"):
             with pytest.raises(DBAPIError, match="permission denied"):

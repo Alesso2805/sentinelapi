@@ -14,10 +14,11 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import Connection
+from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from sentinelapi.audit.migrations import VERSION_TABLE
+from sentinelapi.audit.migrations.grants import role_name
 
 MIGRATIONS = Path(__file__).parent / "migrations"
 
@@ -40,7 +41,14 @@ async def _run(database_url: str, step: Callable[[Connection], object]) -> objec
 
 
 async def upgrade(database_url: str, revision: str = "head", *, app_role: str | None = None) -> None:
-    await _run(database_url, lambda c: command.upgrade(_config(c, app_role), revision))
+    def step(connection: Connection) -> None:
+        command.upgrade(_config(connection, app_role), revision)
+        if app_role and connection.dialect.name == "postgresql":
+            # The app checks it runs on a migrated schema (/ready, the sink's start),
+            # so its role reads the version table too; never writes it.
+            connection.execute(text(f'GRANT SELECT ON {VERSION_TABLE} TO "{role_name(app_role)}"'))
+
+    await _run(database_url, step)
 
 
 async def downgrade(database_url: str, revision: str = "base") -> None:

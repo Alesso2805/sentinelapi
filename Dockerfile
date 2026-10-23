@@ -14,7 +14,7 @@ COPY sentinelapi ./sentinelapi
 # --reinstall-package: uv would otherwise reuse a wheel of this project from the cache, built
 # from older source, since it watches only pyproject.toml for a local project's changes.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable --reinstall-package sentinelapi \
+    uv sync --locked --no-dev --no-editable --reinstall-package fastapi-sentinel \
     --extra demo --extra redis --extra postgres
 
 FROM python:3.12.15-slim-bookworm AS runtime

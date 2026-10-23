@@ -10,7 +10,7 @@ On [pypi.org](https://pypi.org/manage/account/publishing/) and [test.pypi.org](h
 
 | Field | PyPI | TestPyPI |
 | --- | --- | --- |
-| PyPI project name | `sentinelapi` | `sentinelapi` |
+| PyPI project name | `fastapi-sentinel` | `fastapi-sentinel` |
 | Owner | `Alesso2805` | `Alesso2805` |
 | Repository name | `sentinelapi` | `sentinelapi` |
 | Workflow name | `release.yml` | `release.yml` |
@@ -18,7 +18,7 @@ On [pypi.org](https://pypi.org/manage/account/publishing/) and [test.pypi.org](h
 
 The GitHub environments `pypi` and `testpypi` exist already. To make every release wait for a click, add yourself as a required reviewer of `pypi` (Settings → Environments).
 
-`sentinelapi` was free on both indexes on 2026-10-23. A pending publisher does not reserve the name; the first publish does.
+The distribution is `fastapi-sentinel`; the package it installs is `sentinelapi`. PyPI refused a pending publisher for `sentinelapi` as too similar to the existing `sentinel-api`: it compares names without separators and with confusable characters folded, so check that form too before choosing a name. A pending publisher does not reserve the name; the first publish does.
 
 ## Each release
 
@@ -34,7 +34,7 @@ The GitHub environments `pypi` and `testpypi` exist already. To make every relea
 4. Check it as a user would, in a fresh environment:
 
    ```bash
-   uv venv /tmp/check && uv pip install --python /tmp/check "sentinelapi[sqlite]==X.Y.Z"
+   uv venv /tmp/check && uv pip install --python /tmp/check "fastapi-sentinel[sqlite]==X.Y.Z"
    ```
 
 A version cannot be published twice: to fix a broken release, release `X.Y.Z+1`.

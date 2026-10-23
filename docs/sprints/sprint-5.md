@@ -5,7 +5,7 @@
 **Needed from the product owner**
 
 - **SEN-33, the server** (ADR-0009): received on 2026-10-22, an `e2-small` VM of its own on Google Cloud, `sentinelaapi.duckdns.org`, and an SSH key of its own for the deploy.
-- **SEN-36, PyPI:** a pending trusted publisher on pypi.org and on test.pypi.org for this repository (`sentinelapi` is free on both; the fields are in `docs/runbooks/release.md`).
+- **SEN-36, PyPI:** a pending trusted publisher on pypi.org and on test.pypi.org for this repository, for the distribution `fastapi-sentinel` (the fields are in `docs/runbooks/release.md`).
 
 **Order:** what needs nobody first: SEN-34 (runbooks, rehearsed locally), SEN-35 (benchmark), the publishing workflow of SEN-36; then SEN-33 and SEN-36's first publish when the server and the account exist; SEN-37 last, its screenshots from the deployed console.
 
@@ -22,6 +22,7 @@
 
 ## Sprint decisions
 
+- **The distribution is `fastapi-sentinel` (SEN-36, ADR-0008's fallback):** PyPI refused a pending publisher for `sentinelapi` as too similar to the existing `sentinel-api`, which the check of SEN-36 missed because it looked up the exact name only. The package stays `import sentinelapi`. The tag `v1.0.0`, which had published nothing to PyPI, moved to the commit with the new name.
 - **Comments only for what the code cannot say (product owner, 2026-10-22):** the rule is in SPEC › Engineering rules. Applied to the whole repository in #33: story numbers, audit-probe history and "used to" docstrings left the code, as did comments that repeated it and section banners; one test comment contradicted its test. Python went from 302 comments and docstrings to 273.
 - **The demo has a server of its own (SEN-33, ADR-0009 option 3):** an `e2-small` VM on Google Cloud's free trial, like Willay's and VeriLedger's, rather than sharing theirs. `sentinelapi.duckdns.org` was taken, so the demo is `sentinelaapi.duckdns.org`. The deploy is run over SSH with a key used for nothing else.
 - **Refused attempts count against a locked account (SEN-43).** CRITICAL means an attack that goes on after the lock; counting only failures, it could never come with `lock`, the default. Each attempt counts once: in `check` when the account is locked, otherwise in `record_failure`.

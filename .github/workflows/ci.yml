@@ -201,8 +201,8 @@ jobs:
         run: |
           uv venv --python 3.12 "$RUNNER_TEMP/env"
           wheel="$(ls "$PWD"/dist/*.whl)"
-          spec="sentinelapi @ file://$wheel"
-          [ -n "${{ matrix.extras }}" ] && spec="sentinelapi[${{ matrix.extras }}] @ file://$wheel"
+          spec="fastapi-sentinel @ file://$wheel"
+          [ -n "${{ matrix.extras }}" ] && spec="fastapi-sentinel[${{ matrix.extras }}] @ file://$wheel"
           uv pip install --python "$RUNNER_TEMP/env" "$spec" httpx
       - name: The README's snippet against the installed package
         working-directory: ${{ runner.temp }}

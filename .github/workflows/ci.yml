@@ -184,3 +184,30 @@ jobs:
       # The keyboard alone runs an attack, the live stream arrives, and axe-core finds
       # no serious or critical violation, in the light theme and the dark one.
       - run: uv run pytest -m browser
+
+  package:
+    name: The wheel installs and works, with each extra
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        extras: ["", "redis", "postgres", "sqlite", "redis,postgres,sqlite"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv build
+      # A fresh environment with the wheel and httpx only, run from outside the repository,
+      # so nothing comes from the source tree (ADR-0008).
+      - name: Install the wheel${{ matrix.extras && format(' [{0}]', matrix.extras) || '' }}
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/env"
+          wheel="$(ls "$PWD"/dist/*.whl)"
+          spec="sentinelapi @ file://$wheel"
+          [ -n "${{ matrix.extras }}" ] && spec="sentinelapi[${{ matrix.extras }}] @ file://$wheel"
+          uv pip install --python "$RUNNER_TEMP/env" "$spec" httpx
+      - name: The README's snippet against the installed package
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/env/bin/python" -I "$GITHUB_WORKSPACE/scripts/smoke_installed.py" \
+            "$GITHUB_WORKSPACE/README.md" $(echo "${{ matrix.extras }}" | tr ',' ' ')

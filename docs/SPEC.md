@@ -61,7 +61,7 @@ Status: **Built** (exists in the working tree; see the audit for its defects), *
 | Demo | Attack console | At `/` with `SENTINEL_DEMO_MODE=true`: three attacks (a burst, credential stuffing from 20 addresses, a refresh-token replay) run server-side against a sandbox of the real detectors, each request's verdict shown and the audit events streamed live to that visitor only | Built (SEN-32, ADR-0010) |
 | Operations | Compose stack | `docker compose up --build`: a `migrate` service runs as the table's owner and exits, then the API starts and connects as `sentinel_app`, which can only add and read audit rows; Redis 7.4 and Postgres 16.11 publish no ports. The API image is multi-stage and pinned, installs exactly `uv.lock`, runs as a non-root user and reports its health | Built (SEN-08, SEN-11, SEN-28, SEN-29) |
 | Operations | Deployment | `deploy/docker-compose.prod.yml`: production settings and secrets from `.env`, Caddy as the only published service, the API trusting only the stack's own network | Overlay built and rehearsed (SEN-29); the server itself is SEN-33 (ADR-0009) |
-| Distribution | Package | Typed wheel on PyPI | Planned (SEN-36, ADR-0008) |
+| Distribution | Package | A typed wheel; `.github/workflows/release.yml` publishes a tag to TestPyPI, then PyPI, by trusted publishing; CI installs the wheel with each extra and runs the README's snippet against it | Workflow and checks built (SEN-36); the first publish waits for the PyPI publishers (docs/runbooks/release.md) |
 
 **Out of scope for this plan:**
 

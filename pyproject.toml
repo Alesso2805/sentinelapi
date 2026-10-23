@@ -122,7 +122,7 @@ forbidden_modules = ["examples"]
 python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["sentinelapi", "examples", "tests", "scripts"]
+files = ["sentinelapi", "examples", "tests", "scripts", "benchmarks"]
 
 # axe-playwright-python ships no type information.
 [[tool.mypy.overrides]]

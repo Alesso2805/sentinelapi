@@ -22,6 +22,7 @@
 
 ## Sprint decisions
 
+- **Comments only for what the code cannot say (product owner, 2026-10-22):** the rule is in SPEC › Engineering rules. Applied to the whole repository in #33: story numbers, audit-probe history and "used to" docstrings left the code, as did comments that repeated it and section banners; one test comment contradicted its test. Python went from 302 comments and docstrings to 273.
 - **The demo has a server of its own (SEN-33, ADR-0009 option 3):** an `e2-small` VM on Google Cloud's free trial, like Willay's and VeriLedger's, rather than sharing theirs. `sentinelapi.duckdns.org` was taken, so the demo is `sentinelaapi.duckdns.org`. The deploy is run over SSH with a key used for nothing else.
 - **Refused attempts count against a locked account (SEN-43).** CRITICAL means an attack that goes on after the lock; counting only failures, it could never come with `lock`, the default. Each attempt counts once: in `check` when the account is locked, otherwise in `record_failure`.
 - **Alerts are held back per account when the event has one (SEN-43),** per source otherwise: credential stuffing comes from a new address every time, and one message per address is a flood.

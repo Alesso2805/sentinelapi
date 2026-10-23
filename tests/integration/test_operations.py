@@ -1,4 +1,4 @@
-"""SEN-30: readiness, request ids, and JSON logs in production."""
+"""Readiness, request ids, and JSON logs in production."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""SEN-32: the attack console (ADR-0010)."""
+"""The attack console (ADR-0010)."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ async def test_stuffing_locks_the_account_though_no_address_failed_twice(console
     assert all(step["outcome"] == "blocked" for step in steps[7:20])
     assert steps[20]["request"].endswith("right password") and steps[20]["outcome"] == "blocked"
     assert "the 8th failure locked the account" in result["summary"]
-    # SEN-43: the refused attempts count, so the attack that goes on turns CRITICAL.
+    # The refused attempts count, so the attack that goes on turns CRITICAL.
     assert [step["level"] for step in steps[7:15]] == ["high"] * 7 + ["critical"]
     assert "From the 15th attempt the attack that goes on is CRITICAL" in result["summary"]
 

@@ -267,7 +267,7 @@
     "/ready": {
       "get": {
         "summary": "Ready",
-        "description": "Readiness: Redis answers and the audit database is reachable and migrated (SEN-30).",
+        "description": "Readiness: Redis answers and the audit database is reachable and migrated.",
         "operationId": "ready_ready_get",
         "responses": {
           "200": {

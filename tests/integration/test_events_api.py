@@ -1,4 +1,4 @@
-"""SEN-26: the demo's events API, for operators only (AR-14)."""
+"""The demo's events API, for operators only (AR-14)."""
 
 from __future__ import annotations
 

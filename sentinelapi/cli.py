@@ -1,6 +1,3 @@
-"""The `sentinel` command: `migrate` creates or upgrades the audit table;
-`purge` deletes the events older than the retention period."""
-
 from __future__ import annotations
 
 import argparse

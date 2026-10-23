@@ -45,7 +45,7 @@ class BruteForceDetector:
         self,
         backend: CounterBackend,
         *,
-        window_seconds: int = 900,  # 15 minutes
+        window_seconds: int = 900,
         per_source_medium: int = 5,
         per_source_high: int = 10,
         per_username_high: int = 8,

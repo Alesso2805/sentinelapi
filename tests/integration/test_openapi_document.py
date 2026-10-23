@@ -1,4 +1,4 @@
-"""docs/openapi.json is the demo app's current contract (SEN-37)."""
+"""docs/openapi.json is the demo app's current contract."""
 
 from __future__ import annotations
 

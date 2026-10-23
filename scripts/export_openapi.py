@@ -1,4 +1,4 @@
-"""Writes the demo app's OpenAPI document to docs/openapi.json (SEN-37).
+"""Writes the demo app's OpenAPI document to docs/openapi.json.
 
     uv run python scripts/export_openapi.py        # or: make openapi
 

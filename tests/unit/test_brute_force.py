@@ -42,7 +42,7 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.threat_level, ThreatLevel.HIGH)
 
     async def test_one_source_against_many_accounts_is_caught_on_the_source_axis(self) -> None:
-        """The case the source axis exists for; no test reached it before SEN-20."""
+        """The case the source axis exists for."""
         fp = build_fingerprint("203.0.113.7", "ua")
         events = [await self.detector.record_failure(fp, f"user{i}@example.com") for i in range(6)]
         levels = [e.threat_level if e else None for e in events]
@@ -55,7 +55,7 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         one attacker, one target account, five different source IPs."""
         event = None
         for i in range(5):
-            fp = build_fingerprint(f"203.0.113.{i}", "ua")  # different IP every time
+            fp = build_fingerprint(f"203.0.113.{i}", "ua")
             event = await self.detector.record_failure(fp, "bob@example.com")
 
         assert event is not None
@@ -64,7 +64,6 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("bob@example.com", event.detail)
 
     async def test_a_blocked_source_is_refused_even_with_the_right_password(self) -> None:
-        """The audit's probe 7: a blocked attacker who guessed right used to get in."""
         fp = build_fingerprint("203.0.113.7", "ua")
         for i in range(6):
             await self.detector.record_failure(fp, f"user{i}@example.com")
@@ -105,8 +104,7 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         return levels
 
     async def test_an_attack_that_goes_on_against_a_locked_account_turns_critical(self) -> None:
-        """SEN-43: refused attempts count too. Counting only failures, a locked
-        account stayed at its 5th and never reached CRITICAL, nor the webhook."""
+        """Refused attempts count against a locked account, so an attack that goes on reaches CRITICAL."""
         expected = [None] * 4 + [ThreatLevel.HIGH] * 3 + [ThreatLevel.CRITICAL] * 3
         self.assertEqual(await self.attack(), expected)
         self.clock.advance(901)  # the refusals did not move the window
@@ -130,7 +128,6 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(event.detail.startswith("6 failed attempts"))
 
     async def test_case_and_spaces_do_not_split_one_account(self) -> None:
-        """The audit's probe 4: four spellings of one account used to count apart."""
         spellings = ["bob@example.com", "Bob@example.com", " BOB@EXAMPLE.COM", "bob@Example.com "]
         event = None
         for i in range(5):
@@ -154,13 +151,10 @@ class TestBruteForceDetector(unittest.IsolatedAsyncioTestCase):
 
         await self.detector.record_success(fp, "carol@example.com")
 
-        # Same fingerprint/user, fresh start — two more failures shouldn't
-        # immediately re-trigger the threshold that five already crossed.
         event = await self.detector.record_failure(fp, "carol@example.com")
         self.assertIsNone(event)
 
     async def test_the_owners_login_does_not_erase_what_other_sources_tried(self) -> None:
-        """The audit's probe 5: the victim's own success used to wipe the attack's count."""
         for i in range(4):
             await self.detector.record_failure(
                 build_fingerprint(f"198.51.100.{i}", "ua"), "carol@example.com"

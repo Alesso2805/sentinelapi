@@ -1,4 +1,4 @@
-"""Keyed hashes instead of raw addresses and user ids (ADR-0006, SEN-24).
+"""Keyed hashes instead of raw addresses and user ids (ADR-0006).
 
 Revision ID: 0002
 Revises: 0001

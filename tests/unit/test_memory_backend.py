@@ -10,7 +10,6 @@ class TestInMemoryBackend(unittest.IsolatedAsyncioTestCase):
         self.backend = InMemoryBackend(clock=self.clock)
 
     async def test_a_busy_key_still_resets_when_its_window_ends(self) -> None:
-        """The audit's probe 1: hits every 2 s used to keep one window open forever."""
         counts = []
         for _ in range(31):
             counts.append(await self.backend.incr_with_expiry("k", 60))
@@ -26,7 +25,6 @@ class TestInMemoryBackend(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await self.backend.set_if_absent("jti", "a", 10))
 
     async def test_expired_keys_are_evicted(self) -> None:
-        """The audit's probe 6: 10,000 expired keys used to stay forever."""
         for i in range(10_000):
             await self.backend.incr_with_expiry(f"rl:{i}", 1)
         self.clock.advance(2)

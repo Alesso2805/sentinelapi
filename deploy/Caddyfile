@@ -1,4 +1,3 @@
-# The one way into a SentinelAPI server (ADR-0009): one hostname, the demo app behind it.
 # SENTINEL_HOSTNAME=localhost serves HTTPS with Caddy's internal CA, for a rehearsal;
 # a real hostname gets Let's Encrypt.
 

@@ -1,4 +1,4 @@
-"""Checks SentinelAPI as an integrator gets it from its wheel (SEN-36).
+"""Checks SentinelAPI as an integrator gets it from its wheel.
 
 Run it with the Python of a fresh environment where only the wheel (with or
 without extras) and httpx are installed, from a directory that is not the

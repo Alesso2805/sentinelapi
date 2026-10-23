@@ -1,5 +1,4 @@
-# The demo app's image: SentinelAPI as installed from uv.lock, and the demo on top.
-# Every version is pinned, so the same commit builds the same image (SEN-28).
+# Every version is pinned, so the same commit builds the same image.
 
 FROM python:3.12.15-slim-bookworm AS build
 COPY --from=ghcr.io/astral-sh/uv:0.11.25 /uv /bin/uv

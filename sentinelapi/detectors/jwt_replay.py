@@ -1,9 +1,8 @@
 """Detects reuse of single-use JWTs via their `jti` claim.
 
-Important scoping note, because getting this wrong is a classic mistake:
-this detector is NOT meant to be applied to ordinary short-lived access
-tokens. Access tokens are presented on every single API call by design —
-treating that as "replay" would flag 100% of legitimate traffic.
+Not for ordinary short-lived access tokens: those are presented on every
+API call by design, so treating that as "replay" would flag all legitimate
+traffic.
 
 It's built for tokens that are supposed to be redeemed exactly once:
 refresh tokens under rotation, password-reset links, email-verification

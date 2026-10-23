@@ -94,7 +94,7 @@ jobs:
       packages: read # to pull the uv image from ghcr.io as an authenticated user
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Anonymous pulls from the shared runners' addresses get ghcr.io 429s, as Willay found.
+      # Anonymous pulls from the shared runners' addresses get ghcr.io 429s.
       - name: Log in to ghcr.io to pull the uv image
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - run: docker build -t sentinelapi:ci .
@@ -181,8 +181,6 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --all-extras
       - run: uv run playwright install --with-deps chromium
-      # The keyboard alone runs an attack, the live stream arrives, and axe-core finds
-      # no serious or critical violation, in the light theme and the dark one.
       - run: uv run pytest -m browser
 
   package:

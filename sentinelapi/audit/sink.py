@@ -28,7 +28,6 @@ from sentinelapi.privacy import Pseudonymizer
 
 GroupKey = tuple[str, str | None, str, str, str]
 
-# How often the writer looks for groups whose window has closed.
 WRITE_INTERVAL_SECONDS = 1.0
 
 

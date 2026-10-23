@@ -1,4 +1,4 @@
-"""SEN-32 in a real browser: the attack console works with the keyboard alone,
+"""The attack console in a real browser: it works with the keyboard alone,
 its live stream arrives, and axe-core finds no serious or critical violation
 before a run, after one, and in the dark theme.
 

@@ -148,6 +148,22 @@ jobs:
             | python3 -c "import json, sys; assert json.load(sys.stdin)['total'] >= 1"
           # AR-12 in the real stack: the API's role cannot rewrite the audit trail.
           ! docker compose exec -T postgres psql -U sentinel_app -d sentinelapi -c "DELETE FROM sentinel_security_events"
+          # Ready as the app's role sees it: Redis up, the schema migrated.
+          curl --fail --silent localhost:8000/ready
+      - name: Back up, lose the data, restore (docs/runbooks/backup-and-restore.md)
+        run: |
+          rows() { docker compose exec -T postgres psql -U sentinel -d sentinelapi -tAc "SELECT count(*) FROM sentinel_security_events"; }
+          before="$(rows)"
+          test "$before" -ge 1
+          sh deploy/backup.sh backups/ci.dump
+          docker compose exec -T postgres psql -U sentinel -d sentinelapi -c "TRUNCATE sentinel_security_events"
+          test "$(rows)" = 0
+          sh deploy/restore.sh backups/ci.dump
+          test "$(rows)" = "$before"
+          # The grants came back with the data: still append-only for the app.
+          ! docker compose exec -T postgres psql -U sentinel_app -d sentinelapi -c "DELETE FROM sentinel_security_events"
+          for _ in $(seq 1 30); do curl --fail --silent localhost:8000/ready && break; sleep 1; done
+          SENTINEL_OPERATOR_TOKEN=dev-operator-token sh deploy/verify.sh http://localhost:8000
       - name: Diagnostics
         if: failure()
         run: docker compose ps -a && docker compose logs --tail 100

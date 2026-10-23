@@ -51,13 +51,15 @@ class LoginGuard:
     def __init__(self, sentinel: Sentinel) -> None:
         self._sentinel = sentinel
 
-    async def check(self, request: Request, username: str) -> None:
+    async def check(self, request: Request, username: str) -> SecurityEvent | None:
         """Before the password: refuses a blocked source or a locked account,
-        even if the password turns out to be right."""
+        even if the password turns out to be right. Returns the verdict that
+        did not block, if any: with `signal` (ADR-0005) its
+        `challenge_required` tells the app to ask for a CAPTCHA or MFA."""
         detector = self._sentinel.brute_force
-        await self._refuse_if_blocking(
-            await detector.check(self.fingerprint(request), username, request.url.path)
-        )
+        verdict = await detector.check(self.fingerprint(request), username, request.url.path)
+        await self._refuse_if_blocking(verdict)
+        return verdict
 
     async def failed(self, request: Request, username: str) -> None:
         detector = self._sentinel.brute_force

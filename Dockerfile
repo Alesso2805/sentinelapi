@@ -12,8 +12,11 @@ COPY pyproject.toml uv.lock README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-install-project --extra demo --extra redis --extra postgres
 COPY sentinelapi ./sentinelapi
+# --reinstall-package: uv would otherwise reuse a wheel of this project from the cache, built
+# from older source, since it watches only pyproject.toml for a local project's changes.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable --extra demo --extra redis --extra postgres
+    uv sync --locked --no-dev --no-editable --reinstall-package sentinelapi \
+    --extra demo --extra redis --extra postgres
 
 FROM python:3.12.15-slim-bookworm AS runtime
 RUN useradd --create-home --uid 10001 sentinel

@@ -314,7 +314,7 @@ sentinelapi/
 │   ├── integration/              # the demo app; migrations on SQLite and Postgres
 │   └── architecture/             # AR-NN
 ├── benchmarks/                   # SEN-35
-├── deploy/                       # docker-compose.prod.yml, Caddyfile, postgres-init/ (SEN-29)
+├── deploy/                       # docker-compose.prod.yml, Caddyfile, postgres-init/, backup, restore and verify scripts
 ├── docs/
 │   ├── SPEC.md                   # this document
 │   ├── BACKLOG.md                # stories and sprint plan
@@ -322,7 +322,7 @@ sentinelapi/
 │   ├── AUDIT.md                  # local, not versioned (SEN-38)
 │   ├── openapi.json              # the demo app's contract (SEN-37)
 │   ├── adr/
-│   ├── runbooks/                 # SEN-34
+│   ├── runbooks/                 # deploy, backup and restore, rotate secrets, roll out
 │   └── sprints/
 ├── .github/workflows/ci.yml
 ├── scripts/check_imports.py      # AR-06, run by CI without extras

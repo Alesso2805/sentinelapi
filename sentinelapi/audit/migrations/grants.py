@@ -14,10 +14,15 @@ from alembic import context, op
 _ROLE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,62}")
 
 
+def role_name(role: str) -> str:
+    """A role name, checked, since it goes into SQL that cannot take it as a parameter."""
+    if not _ROLE.fullmatch(role):
+        raise ValueError(f"not a role name: {role!r}")
+    return role
+
+
 def grant_append_only(table: str) -> None:
     role = context.config.attributes.get("app_role")
     if not role or op.get_bind().dialect.name != "postgresql":
         return
-    if not _ROLE.fullmatch(role):
-        raise ValueError(f"not a role name: {role!r}")
-    op.execute(f'GRANT SELECT, INSERT ON {table} TO "{role}"')
+    op.execute(f'GRANT SELECT, INSERT ON {table} TO "{role_name(role)}"')

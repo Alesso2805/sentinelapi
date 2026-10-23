@@ -27,7 +27,7 @@ sh deploy/restore.sh backups/sentinelapi-20261023T030000Z.dump
 Then check:
 
 ```bash
-SENTINEL_OPERATOR_TOKEN=... sh deploy/verify.sh https://sentinelapi.duckdns.org
+SENTINEL_OPERATOR_TOKEN=... sh deploy/verify.sh https://sentinelaapi.duckdns.org
 ```
 
 ## After a restore

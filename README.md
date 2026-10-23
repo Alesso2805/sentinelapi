@@ -2,6 +2,7 @@
 
 **Threat-detection middleware for FastAPI.** Add it to an existing app and get fixed-window rate limiting, brute-force detection that also catches credential stuffing, and single-use refresh tokens. Every verdict goes to a private, queryable audit trail.
 
+[![Live demo](https://img.shields.io/badge/live%20demo-sentinelaapi.duckdns.org-2EA44F)](https://sentinelaapi.duckdns.org)
 [![CI](https://github.com/Alesso2805/sentinelapi/actions/workflows/ci.yml/badge.svg)](https://github.com/Alesso2805/sentinelapi/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%E2%80%933.15-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -13,7 +14,7 @@
 
 ![The attack console after credential stuffing: 20 addresses fail once each against one account, and the 8th failure locks it](docs/images/console-stuffing.png)
 
-> **Status:** everything planned for 1.0.0 is built and tested. Two steps remain: the public demo, which needs its server, and the first release on PyPI. Until then, install it from GitHub and run the attack console locally with one command ([Quickstart](#quickstart)). See the [changelog](CHANGELOG.md) and the [backlog](docs/BACKLOG.md).
+> **Status:** everything planned for 1.0.0 is built and tested, and the demo is live at **[sentinelaapi.duckdns.org](https://sentinelaapi.duckdns.org)**. One step remains: the first release on PyPI. Until then, install it from GitHub ([Use it in your app](#use-it-in-your-app)). See the [changelog](CHANGELOG.md) and the [backlog](docs/BACKLOG.md).
 
 ## What it catches
 
@@ -37,13 +38,13 @@ SentinelAPI catches both, and does standard rate limiting too. Each detector is 
 
 ## Live demo
 
-The attack console goes on a public server with 1.0.0 ([SEN-33](docs/BACKLOG.md)). You can run the same console locally now: `docker compose up --build --wait`, then open http://localhost:8000/. Each button runs one attack against the real detectors, from simulated addresses:
+**[sentinelaapi.duckdns.org](https://sentinelaapi.duckdns.org)**: each button runs one attack against the real detectors, from simulated addresses:
 
 - a burst over the rate limit;
 - credential stuffing from 20 addresses;
 - a replayed refresh token.
 
-You see each request with its verdict, and the audit trail as it is written.
+You see each request with its verdict, and the audit trail as it is written: your own events only, and 10 attacks an hour per visitor. The same console runs locally with `docker compose up --build --wait`, at http://localhost:8000/.
 
 | | |
 | --- | --- |
@@ -346,7 +347,7 @@ Planned in [docs/BACKLOG.md](docs/BACKLOG.md):
 2. Done: detectors without the evasions above.
 3. Done: a three-line integration, and an audit trail that is migrated, private and safe under a flood.
 4. Done: a production-ready stack (safe settings, a reproducible image, one command, readiness and request ids), webhook alerts on CRITICAL events and the attack console.
-5. Done: runbooks, a measured overhead, the publishing workflow, the demo's OpenAPI document, this README and the changelog. Next: the deployed demo, the first release on PyPI and the 1.0.0 tag.
+5. Done: the deployed demo, runbooks, a measured overhead, the publishing workflow, the demo's OpenAPI document, this README and the changelog. Next: the first release on PyPI and the 1.0.0 tag.
 
 After 1.0.0, optional stories: a sliding-window limiter (SEN-39), replay detection for tokens signed with a key pair (SEN-40), the console in Spanish (SEN-41) and Prometheus metrics (SEN-42).
 

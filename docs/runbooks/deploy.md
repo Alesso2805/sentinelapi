@@ -2,6 +2,8 @@
 
 This runbook puts the demo, the attack console included, on a public server with HTTPS (SEN-33, ADR-0009). It follows the same shape as Willay's and VeriLedger's deployments: one server, Docker Compose, Caddy, one hostname, a free DuckDNS name.
 
+The public demo runs at **https://sentinelaapi.duckdns.org**, on a Google Cloud VM of its own, since 2026-10-22; the steps below are the ones it was deployed with.
+
 | Path | What |
 | --- | --- |
 | `/` | the attack console |
@@ -15,10 +17,32 @@ The stack needs about 0.5 GB of memory and 2 GB of disk: the API, Redis and Post
 
 Two ways (ADR-0009):
 
-- **A server of its own:** any Linux machine with Docker (Willay's runbook covers an Oracle Cloud Always Free server step by step). Ports 80 and 443 open to the internet.
+- **A server of its own,** as the public demo runs: any Linux machine with Docker and ports 80 and 443 open to the internet. [On Google Cloud](#on-google-cloud) is how the demo's was made; Willay's runbook covers an Oracle Cloud Always Free server.
 - **VeriLedger's server:** no new machine, but its Caddy already holds ports 80 and 443; see [On a server that already runs Caddy](#on-a-server-that-already-runs-caddy).
 
-Point a hostname at the server's public address, for example `sentinelapi.duckdns.org` at [duckdns.org](https://www.duckdns.org).
+Point a hostname at the server's public address at [duckdns.org](https://www.duckdns.org). The demo's is `sentinelaapi.duckdns.org`, with two a's, since `sentinelapi` was taken. Leave the IPv6 field empty: the VM has no IPv6 address, and Let's Encrypt tries an `AAAA` record first.
+
+### On Google Cloud
+
+With the free trial, as Willay's and VeriLedger's demos: US$300 of credit for 90 days. When the credit or the days run out, the VM stops; nothing is charged unless the account is upgraded, so never press **Upgrade** on the trial banner.
+
+**Compute Engine → VM instances → Create instance:**
+
+- **Machine:** E2, `e2-small` (2 shared vCPUs, 2 GB), in `southamerica-west1` (Santiago), the closest region to Peru. The console estimates about US$20 a month of credit. The running stack takes about 150 MB.
+- **OS and storage:** Ubuntu 24.04 LTS for x86/64 (not *Minimal*), a 20 GB balanced disk.
+- **Data protection:** no backups. The demo's data is disposable, and [section 5](#5-backups) backs up the audit database.
+- **Networking:** allow HTTP and HTTPS traffic. In the network interface, reserve a **static external IPv4 address**, so the IP survives a restart.
+- **Observability:** leave the Ops Agent off; it takes memory a 2 GB VM does not have to spare.
+- **Security:** under *Add manually generated SSH keys*, the public key of whoever runs the next steps, as `ssh-ed25519 AAAA… <user>`. Google creates that Linux user, with `sudo`.
+
+Then Docker, on the server (`ssh <user>@<IP>`), as in Willay's runbook:
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker "$USER"
+sudo apt-get install -y git
+exit    # log in again so the docker group applies
+```
 
 ## 2. The code and the secrets
 
@@ -29,7 +53,7 @@ cd /srv/sentinelapi
 cat > .env <<EOF
 # Both compose files for every command run here, scripts included.
 COMPOSE_FILE=docker-compose.yml:deploy/docker-compose.prod.yml
-SENTINEL_HOSTNAME=sentinelapi.duckdns.org
+SENTINEL_HOSTNAME=sentinelaapi.duckdns.org
 SENTINEL_JWT_SECRET=$(openssl rand -hex 32)
 SENTINEL_AUDIT_HASH_KEY=$(openssl rand -hex 32)
 SENTINEL_OPERATOR_TOKEN=$(openssl rand -hex 24)
@@ -55,16 +79,16 @@ In order: Postgres creates the `sentinel_app` role on its first start; `migrate`
 
 ```bash
 SENTINEL_OPERATOR_TOKEN=$(grep ^SENTINEL_OPERATOR_TOKEN .env | cut -d= -f2) \
-  sh deploy/verify.sh https://sentinelapi.duckdns.org
+  sh deploy/verify.sh https://sentinelaapi.duckdns.org
 ```
 
-It asks `/health`, `/ready` (Redis up, the schema migrated, as the app's role sees it) and the operator's events. Then open `https://sentinelapi.duckdns.org/` and run each attack once.
+It asks `/health`, `/ready` (Redis up, the schema migrated, as the app's role sees it) and the operator's events. Then open `https://sentinelaapi.duckdns.org/` and run each attack once.
 
 Behind Caddy every request arrives from Caddy's address; the API believes Caddy's `X-Forwarded-For` (the overlay trusts the private ranges, which only the stack's own network can come from), so the console's limits apply to each visitor, not to everyone at once.
 
 ## 5. Backups
 
-Every night, as [backup-and-restore.md](backup-and-restore.md) describes:
+Every night, as [backup-and-restore.md](backup-and-restore.md) describes, in the crontab of the user that runs the stack (`crontab -e`; a Google Cloud VM keeps UTC, so 03:00 is 22:00 in Lima):
 
 ```cron
 0 3 * * * cd /srv/sentinelapi && sh deploy/backup.sh && find backups -name 'sentinelapi-*.dump' -mtime +14 -delete
@@ -83,7 +107,7 @@ cd /srv/sentinelapi
 sh deploy/backup.sh                 # migrations only go forward: keep the way back
 git pull
 docker compose up -d --build --wait  # migrate runs again before the new API starts
-sh deploy/verify.sh https://sentinelapi.duckdns.org
+sh deploy/verify.sh https://sentinelaapi.duckdns.org
 ```
 
 ## 7. Roll back
@@ -108,7 +132,7 @@ docker network connect sentinelapi_default <the other stack's Caddy container>
 Add a site to that Caddy's Caddyfile, and reload it:
 
 ```caddyfile
-sentinelapi.duckdns.org {
+sentinelaapi.duckdns.org {
 	encode zstd gzip
 	header -Server
 	reverse_proxy sentinelapi-api-1:8000

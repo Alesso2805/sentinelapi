@@ -22,7 +22,7 @@ The GitHub environments `pypi` and `testpypi` exist already. To make every relea
 
 ## Each release
 
-1. On a branch: `uv version X.Y.Z`, then move `CHANGELOG.md`'s Unreleased section under `## [X.Y.Z] - <date>`. Open the PR and merge it once CI is green.
+1. On a branch: `uv version X.Y.Z` and `make openapi` (the demo's document carries the version), then move `CHANGELOG.md`'s Unreleased section under `## [X.Y.Z] - <date>` and add its comparison link at the bottom. Open the PR and merge it once CI is green.
 2. Tag the merge commit and push the tag:
 
    ```bash

@@ -16,7 +16,7 @@ Each rule is one sentence that a test can prove or refute. A rule about "every" 
 | AR-06 | Every module of `sentinelapi`, except `storage.redis_backend`, imports in an environment that has only the required dependencies. | SPEC › Non-functional requirements › Reproducibility; ADR-0008 | CI job: `uv sync --frozen --no-dev` with no extras, then import every module found by `pkgutil.walk_packages`. |
 | AR-07 | Every implementation of `CounterBackend` passes the same contract suite: fixed windows started by the first hit, atomic increments under concurrency, `set_if_absent` true exactly once per key and TTL, and `reset` clearing both kinds of key. | README ("without a single line of detector code changing"); ADR-0002 | Pytest in `tests/contract/`: a fixture parametrized over every class in `sentinelapi.storage` that structurally implements the protocol, with Redis from CI's service, and an injectable clock. |
 | AR-08 | No detector raises on attacker-controlled input: malformed or oversized tokens, usernames and paths produce an event or `None`. | SPEC › Non-functional requirements ("a false negative over blocking someone"); `jwt_replay.py` catches token errors on purpose | Pytest: each detector's public method fed a fixed corpus (empty, 1 MB, non-UTF-8, control characters, malformed JWTs), asserting the return type. |
-| AR-09 | Every field of `SentinelSettings` appears in `.env.example`. | README › Configuration ("see `.env.example`") | Pytest: iterate `SentinelSettings.model_fields` and parse `.env.example`. From SEN-37 the same test checks the README's configuration table. |
+| AR-09 | Every field of `SentinelSettings` appears in `.env.example` and in the README's configuration tables, which name no other setting. | README › Configuration ("lists every one", "a test checks that every setting is in this section") | Pytest: iterate `SentinelSettings.model_fields`, parse `.env.example` and the README's Configuration section (the README since SEN-37). |
 | AR-10 | With `SENTINEL_ENV=production`, the settings refuse a missing, example or short (under 32 bytes) JWT secret, a missing audit hash key, and the memory backend unless explicitly allowed. | SPEC › Non-functional requirements › Security; CLAUDE.md ("production refuses default secrets") | Pytest: build `SentinelSettings` for each bad case and expect a validation error. |
 | AR-11 | The audit table's SQLAlchemy model and its Alembic history describe the same schema, and the history is reversible on Postgres. | SPEC › Data model › Rules; ADR-0006 | Integration test on Postgres: `upgrade head`, `alembic check` reports nothing, then `downgrade base` → `upgrade head` with no table left behind. |
 | AR-12 | In the demo stack, the app's database role cannot UPDATE or DELETE rows of `sentinel_security_events`. | `audit/models.py` docstring ("append-only on purpose"); SPEC › Data model › Rules | Integration test on Postgres: connect as the app role and expect both statements to fail with a permission error. |
@@ -26,6 +26,7 @@ Each rule is one sentence that a test can prove or refute. A rule about "every" 
 | AR-16 | `time.time`, `time.monotonic`, `datetime.datetime.now` and `datetime.datetime.utcnow` are called only in `sentinelapi/clock.py`; every other module receives a `Clock`. | Proposed rule, adopted 2026-10-22; ADR-0002 | Ruff `flake8-tidy-imports.banned-api`, with a per-file exception for `sentinelapi/clock.py` and the tests. |
 | AR-17 | No public method of a detector takes a framework object: detectors receive domain types and plain values. | Proposed rule, adopted 2026-10-22; ADR-0001; ADR-0004 | Pytest: iterate the public methods of every class in `sentinelapi.detectors` and assert no parameter annotation comes from `starlette` or `fastapi`. |
 | AR-18 | Inside `sentinelapi` and `examples`, only `sentinelapi/integration.py` constructs backends and detectors. | Proposed rule, adopted 2026-10-22; ADR-0007 | Pytest: `ast` walk for calls to every backend and detector class outside that module. |
+| AR-19 | Every test that the README's Guarantees name is defined in a file that its row links, and every row names one. | README › Guarantees ("a test checks that every name here exists"), SEN-37 | Pytest: parse each row's links and backticked `test_` names, and find each definition. |
 
 ## Promises that are not verifiable as written
 
@@ -53,7 +54,7 @@ They come from the README and the docstrings. They are not rules until they are 
 **import-linter + Pytest architecture tests + Alembic**, all run in CI (SEN-14), as proposed for VeriLedger:
 
 - **import-linter** for the contracts between packages (AR-04, AR-05). It follows imports transitively, which a per-file check does not.
-- **Pytest** in `tests/architecture/` for the rules that walk a list: the `ast` allowlists (AR-01 to AR-03), the settings (AR-09), the routes (AR-14) and the request body (AR-15). An allowlist needs code; import-linter's `forbidden` contracts only take a list of packages to forbid, so a new library would slip through.
+- **Pytest** in `tests/architecture/` for the rules that walk a list: the `ast` allowlists (AR-01 to AR-03), the settings (AR-09), the routes (AR-14), the README's guarantees (AR-19) and the request body (AR-15). An allowlist needs code; import-linter's `forbidden` contracts only take a list of packages to forbid, so a new library would slip through.
 - **Pytest** in `tests/contract/` for AR-07 and in `tests/unit/` for AR-08 and AR-10.
 - **Alembic against a real Postgres** in `tests/integration/` for AR-11 and AR-12, and the audit scan of AR-13.
 - **A CI job without dev dependencies** for AR-06.
@@ -78,5 +79,6 @@ Alternatives considered: only Pytest with `ast` (no new dependency, but transiti
 | `pyproject.toml` › `[tool.ruff.lint.flake8-tidy-imports.banned-api]` | AR-16 |
 | `tests/architecture/test_detectors.py` | AR-17 |
 | `tests/architecture/test_composition.py` | AR-18 |
+| `tests/architecture/test_readme_guarantees.py` | AR-19 |
 
 **Rules that did not hold when SEN-15 landed**, each `xfail` (or, for AR-16, a per-file exception) until its story: AR-07 on the memory backend (SEN-17), AR-10 (SEN-27), AR-11 and AR-12 (SEN-23, which replaces their placeholders with checks on Postgres), AR-13 (SEN-24), AR-14 (SEN-26), AR-16 (SEN-17, SEN-21, SEN-23) and AR-18 (SEN-22). AR-06 failed on 2026-10-22 (greenlet) and held from #1. SEN-15 lands the tests with those rules marked `xfail` and the story that fixes each, so CI is green and the debt is visible; removing an `xfail` is part of the fixing story's DoD.

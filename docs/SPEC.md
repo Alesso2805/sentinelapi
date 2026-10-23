@@ -275,6 +275,7 @@ A security library that blocks legitimate users is worse than no library. Every 
 - **Raise contradictions.** If a request contradicts this specification or an ADR, the contradiction is raised before the work starts. A change to this document goes in its own `docs(spec)` commit.
 - **Small commits.** Conventional Commits, one PR per story; work over about 300 lines is split.
 - **Explain decisions.** Non-obvious decisions are explained where they are made: a comment that says why, the PR, or an ADR.
+- **Comments only for what the code cannot say** (product owner, 2026-10-22): the why of something that looks wrong on purpose, an external constraint, an invariant or a security implication, a formula with its source or a unit the name does not carry, the contract of a public API, and text a tool shows (FastAPI, argparse). History, story numbers, repeats of the code and banners go to the commit, the PR or nowhere; tool directives always stay.
 - **Evidence over claims.** A guarantee enters the README only together with the test that proves it.
 
 **Definition of done**

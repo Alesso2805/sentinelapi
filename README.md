@@ -11,6 +11,8 @@
 [![Typed](https://img.shields.io/badge/typing-mypy%20strict-2A6DB2)](https://mypy.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+![The attack console after credential stuffing: 20 addresses fail once each against one account, and the 8th failure locks it](docs/images/console-stuffing.png)
+
 > **Status:** everything planned for 1.0.0 is built and tested. Two steps remain: the public demo, which needs its server, and the first release on PyPI. Until then, install it from GitHub and run the attack console locally with one command ([Quickstart](#quickstart)). See the [changelog](CHANGELOG.md) and the [backlog](docs/BACKLOG.md).
 
 ## What it catches
@@ -42,6 +44,11 @@ The attack console goes on a public server with 1.0.0 ([SEN-33](docs/BACKLOG.md)
 - a replayed refresh token.
 
 You see each request with its verdict, and the audit trail as it is written.
+
+| | |
+| --- | --- |
+| ![The console's three attacks, in dark mode](docs/images/console-overview-dark.png) | ![The burst: requests 1 to 60 allowed, the 61st and every one after it blocked with 429](docs/images/console-burst.png) |
+| ![Credential stuffing goes on after the lock: from the 15th attempt against the account, its events are CRITICAL](docs/images/console-stuffing-critical.png) | ![The replay: the owner rotates the refresh token, the stolen copy gets 403 as likely theft, a forged token 401](docs/images/console-replay.png) |
 
 ## Use it in your app
 

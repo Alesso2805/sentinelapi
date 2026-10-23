@@ -64,11 +64,16 @@ dev = [
 packages = ["sentinelapi"]
 
 # PyPI shows the README, where relative links would lead nowhere: they point at GitHub there.
+# Images first, at their raw files: a blob URL is an HTML page, not an image.
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
 content-type = "text/markdown"
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
 path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '!\[([^\]]*)\]\((?!https?://)([^)]+)\)'
+replacement = '![\1](https://raw.githubusercontent.com/Alesso2805/sentinelapi/main/\2)'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '\]\((?!https?://|#)([^)]+)\)'

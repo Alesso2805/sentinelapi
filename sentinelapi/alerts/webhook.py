@@ -1,11 +1,13 @@
 """A webhook for CRITICAL events: a Slack-compatible message, sent off the
-request path, at most one per fingerprint and threat per cooldown, retried
+request path, at most one per target and threat per cooldown, retried
 with backoff.
 
 An operator should not have to watch the logs to hear that a stolen token
 was replayed. But an attack produces many identical events, and a chat
 channel that gets one message per request is one nobody reads, so repeats
-from the same source are held back for the cooldown.
+against the same target are held back for the cooldown. The target is the
+account when the event has one, as credential stuffing does from a new
+address every time; otherwise it is the source.
 """
 
 from __future__ import annotations
@@ -69,7 +71,7 @@ class WebhookAlerter:
         if event.threat_level is not ThreatLevel.CRITICAL:
             return
         now = self._clock.monotonic()
-        key = (event.fingerprint.key, event.threat_type.value)
+        key = (event.subject or event.fingerprint.key, event.threat_type.value)
         if now - self._last_sent.get(key, -self._cooldown) < self._cooldown:
             return
         self._last_sent[key] = now
@@ -91,15 +93,19 @@ class WebhookAlerter:
 
     def message(self, event: SecurityEvent) -> dict[str, str]:
         """Slack's incoming-webhook shape, which many chat tools accept. The
-        source appears as its keyed hash, as in the audit trail (ADR-0006)."""
+        source and the account appear as their keyed hashes, as in the audit trail (ADR-0006)."""
         threat = event.threat_type.value.replace("_", " ")
         source = self._pseudonymize(event.fingerprint.key)
-        return {
-            "text": (
-                f":rotating_light: SentinelAPI, CRITICAL {threat} on {event.path}: {event.detail}. "
-                f"Source {source}; repeats from it are held back for {int(self._cooldown // 60)} minutes."
+        minutes = int(self._cooldown // 60)
+        if event.subject:
+            target = (
+                f"Account {self._pseudonymize(event.subject)}, last attempt from source {source}; "
+                f"repeats against it are held back for {minutes} minutes."
             )
-        }
+        else:
+            target = f"Source {source}; repeats from it are held back for {minutes} minutes."
+        headline = f":rotating_light: SentinelAPI, CRITICAL {threat} on {event.path}: {event.detail}."
+        return {"text": f"{headline} {target}"}
 
     async def _send_forever(self) -> None:
         while True:

@@ -42,7 +42,7 @@ Watch the 429 and 403 rates for a day. To undo, set `SENTINEL_ENFORCE=false` aga
 
 ## 4. Alert
 
-Set `SENTINEL_ALERT_WEBHOOK_URL` to a chat webhook. Only CRITICAL events reach it, a replayed token or an account locked many times over, one message per source and threat every 10 minutes.
+Set `SENTINEL_ALERT_WEBHOOK_URL` to a chat webhook. Only CRITICAL events reach it, a replayed token or an account locked many times over, one message per account (for a replayed token, per source) and threat every 10 minutes.
 
 ## The account lock
 

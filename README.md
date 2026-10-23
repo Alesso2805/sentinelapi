@@ -160,7 +160,7 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 | `SENTINEL_JWT_SECRET` | `change-me` | The key your app signs tokens with; the replay detector verifies with it |
 | `SENTINEL_AUDIT_HASH_KEY` | none | Key of the HMACs that stand for addresses, accounts and fingerprints in the audit trail and the log: correlatable, not reversible without it. Unset, a random key per process. `sentinel purge` deletes events older than `SENTINEL_AUDIT_RETENTION_DAYS` (90) |
 | `SENTINEL_AUDIT_AGGREGATE_SECONDS` | `60` | Identical events within this window become one audit row with a count, written by a background task, so an attack never becomes a write flood and a database outage never fails a request |
-| `SENTINEL_ALERT_WEBHOOK_URL` | none | A Slack-compatible incoming webhook that hears about CRITICAL events, such as a replayed token: at most one message per source and threat every 10 minutes, retried with backoff, never on the request path |
+| `SENTINEL_ALERT_WEBHOOK_URL` | none | A Slack-compatible incoming webhook that hears about CRITICAL events, such as a replayed token: at most one message per account (for a replayed token, per source) and threat every 10 minutes, retried with backoff, never on the request path |
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay. Tokens there need `exp` and `jti`; a used `jti` is refused until the token expires |
 | `SENTINEL_ENFORCE` | `true` | `false` = log-only "shadow mode," useful before you trust it to block for real |
 

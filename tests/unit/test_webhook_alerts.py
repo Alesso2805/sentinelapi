@@ -1,8 +1,9 @@
-"""SEN-31: CRITICAL events reach a webhook, once per source and threat per cooldown, off the request path."""
+"""SEN-31: CRITICAL events reach a webhook, once per target and threat per cooldown, off the request path."""
 
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 
 import structlog
 
@@ -74,6 +75,30 @@ async def test_one_alert_per_source_and_threat_per_cooldown() -> None:
     await alerts(event())  # the same source, after the cooldown
     await delivered(alerts)
     assert len(receiver.delivered) == 3
+
+
+async def test_an_attack_on_one_account_from_many_sources_is_one_alert() -> None:
+    """SEN-43: credential stuffing comes from a new address every time, so its
+    alerts are held back per account, not per source."""
+    receiver = Receiver()
+    alerts = alerter(receiver)
+
+    def stuffing(source: str, account: str = "account-id-1") -> SecurityEvent:
+        return replace(
+            event(source=source),
+            threat_type=ThreatType.BRUTE_FORCE,
+            path="/auth/login",
+            detail="account locked, 15 attempts against it in this window",
+            subject=account,
+        )
+
+    for i in range(20):
+        await alerts(stuffing(f"198.51.100.{i}"))
+    await alerts(stuffing("198.51.100.0", account="account-id-2"))  # another account
+    await delivered(alerts)
+    assert len(receiver.delivered) == 2
+    text = receiver.delivered[0]["text"]
+    assert f"Account {PSEUDONYMIZE('account-id-1')}" in text and "account-id-1" not in text
 
 
 async def test_a_failing_receiver_is_retried_with_backoff() -> None:

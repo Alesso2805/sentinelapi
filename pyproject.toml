@@ -1,12 +1,12 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-fancy-pypi-readme>=24.1"]
 build-backend = "hatchling.build"
 
 [project]
 name = "sentinelapi"
 version = "0.1.0"
 description = "Threat-detection middleware for FastAPI: rate limiting, brute-force/credential-stuffing detection, and refresh-token replay protection, with an audit trail."
-readme = "README.md"
+dynamic = ["readme"]
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Alessandro David Polanco" }]
@@ -34,6 +34,11 @@ dependencies = [
     "alembic>=1.13",
 ]
 
+[project.urls]
+Repository = "https://github.com/Alesso2805/sentinelapi"
+Changelog = "https://github.com/Alesso2805/sentinelapi/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Alesso2805/sentinelapi/issues"
+
 [project.scripts]
 sentinel = "sentinelapi.cli:main"
 
@@ -57,6 +62,17 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["sentinelapi"]
+
+# PyPI shows the README, where relative links would lead nowhere: they point at GitHub there.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+)\)'
+replacement = '](https://github.com/Alesso2805/sentinelapi/blob/main/\1)'
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

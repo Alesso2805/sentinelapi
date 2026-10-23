@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hmac
 from datetime import datetime
+from importlib.metadata import version
 from typing import Annotated, cast
 
 import jwt
@@ -92,7 +93,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     settings = settings or SentinelSettings()
     # JSON lines in production, for a log aggregator; readable ones on a laptop.
     configure_logging(json_output=settings.env == "production")
-    app = FastAPI(title="SentinelAPI demo")
+    app = FastAPI(title="SentinelAPI demo", version=version("sentinelapi"))
     install_sentinel(app, settings)
     app.include_router(auth_router)
     if settings.demo_mode:

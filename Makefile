@@ -1,4 +1,4 @@
-.PHONY: install up down migrate demo test lint format typecheck check-imports bench
+.PHONY: install up down migrate demo test lint format typecheck check-imports openapi bench
 
 install:
 	uv sync --all-extras
@@ -36,6 +36,10 @@ typecheck:
 # Fails if the library needs a package that is only an extra or a dev dependency
 check-imports:
 	uv run --isolated --no-dev python scripts/check_imports.py
+
+# The demo's OpenAPI document, docs/openapi.json; a test fails when it is stale
+openapi:
+	uv run python scripts/export_openapi.py
 
 # Latency SentinelAPI adds per request; with SENTINEL_BENCH_REDIS_URL set, on Redis too
 bench:

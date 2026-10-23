@@ -90,7 +90,7 @@ One Python package, `sentinelapi`, that runs inside the integrator's process (AD
 | `config.py`, `logging_config.py` | `SentinelSettings`, structlog setup | pydantic-settings, structlog |
 | `examples/demo_app` | The demo FastAPI app | Everything; nothing in `sentinelapi` imports it |
 
-The rules above are written as verifiable statements AR-01 to AR-18 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md).
+The rules above are written as verifiable statements AR-01 to AR-19 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md).
 
 **Request flow.** `install_sentinel` adds the middleware, which, for each HTTP request:
 
@@ -221,7 +221,7 @@ Every setting is an environment variable with the `SENTINEL_` prefix, or a line 
 
 ## Demo app API contract
 
-The demo app is not part of the library; it is how a visitor and the tests see the library work. Its generated OpenAPI document is exported to `docs/openapi.json` from SEN-37.
+The demo app is not part of the library; it is how a visitor and the tests see the library work. Its generated OpenAPI document is `docs/openapi.json` (`make openapi`, SEN-37); a test fails when the file is not what the demo serves. Its `info.version` is the package's version.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
@@ -267,7 +267,7 @@ A security library that blocks legitimate users is worse than no library. Every 
 
 **Stack.** Python 3.12 for development and the image (the library's supported range is ADR-0008's decision), FastAPI and Starlette, Pydantic v2 and pydantic-settings, SQLAlchemy 2 async (asyncpg, aiosqlite), Alembic (SEN-23), PyJWT, redis-py's asyncio client, structlog, uv, Ruff, Mypy strict, Pytest with pytest-asyncio, httpx. PostgreSQL 16 and Redis 7 in the demo stack; SQLite only in tests and local development. Docker Compose; Caddy on the server (ADR-0009).
 
-**Architecture rules.** The module rules of the Architecture section, written as verifiable rules AR-01 to AR-18 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md), each with the test that checks it (SEN-15).
+**Architecture rules.** The module rules of the Architecture section, written as verifiable rules AR-01 to AR-19 in [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md), each with the test that checks it (SEN-15).
 
 **How we work**
 
@@ -320,18 +320,18 @@ sentinelapi/
 │   ├── BACKLOG.md                # stories and sprint plan
 │   ├── ARCHITECTURE_RULES.md
 │   ├── AUDIT.md                  # local, not versioned (SEN-38)
-│   ├── openapi.json              # the demo app's contract (SEN-37)
+│   ├── openapi.json              # the demo app's contract, generated (SEN-37)
 │   ├── adr/
 │   ├── runbooks/                 # deploy, backup and restore, rotate secrets, roll out
 │   └── sprints/
-├── .github/workflows/ci.yml
-├── scripts/check_imports.py      # AR-06, run by CI without extras
+├── .github/workflows/            # ci.yml on every PR; release.yml on a tag (SEN-36)
+├── scripts/                      # check_imports.py (AR-06), smoke_installed.py (the wheel, SEN-36), export_openapi.py (SEN-37)
 ├── docker-compose.yml            # migrate, api, redis, postgres
 ├── Dockerfile
 ├── Makefile
 ├── pyproject.toml
 ├── uv.lock
-├── CHANGELOG.md                  # SEN-37
+├── CHANGELOG.md                  # Keep a Changelog (SEN-37)
 ├── LICENSE
 ├── SECURITY.md
 ├── CLAUDE.md                     # local, not versioned (SEN-38)

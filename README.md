@@ -158,6 +158,20 @@ All settings are `SENTINEL_`-prefixed environment variables (or a `.env` file â€
 | `SENTINEL_JWT_REPLAY_PATHS` | `["/auth/refresh"]` | Paths checked for single-use token replay. Tokens there need `exp` and `jti`; a used `jti` is refused until the token expires |
 | `SENTINEL_ENFORCE` | `true` | `false` = log-only "shadow mode," useful before you trust it to block for real |
 
+## Overhead
+
+`make bench` ([benchmarks/overhead.py](benchmarks/overhead.py)) calls the ASGI app directly, with no network and no HTTP client, so it measures what SentinelAPI adds and nothing else: the same endpoint without SentinelAPI, with it on the memory backend, and with it on Redis. Nothing is blocked, so every request pays the full check.
+
+On a Windows 11 laptop (20 logical CPUs, Python 3.12.10), 20,000 requests per configuration, with Redis in Docker Desktop on the same machine:
+
+| Configuration | p50 | p95 | p99 | Added at p95 |
+| --- | --- | --- | --- | --- |
+| Without SentinelAPI | 0.006 ms | 0.009 ms | 0.013 ms | - |
+| Memory backend | 0.029 ms | 0.048 ms | 0.122 ms | 0.039 ms |
+| Redis, same host | 0.712 ms | 1.429 ms | 2.544 ms | 1.420 ms |
+
+On Redis, the cost is one round trip per request (`INCR` and `EXPIRE` in one pipeline); Docker Desktop's virtual network makes that round trip slower than on a Linux server. The target was p95 â‰¤ 2 ms with Redis on the same host.
+
 ## Known limitations
 
 None known. The audit of 2026-10-22 found a way around every detector and gaps in the audit trail; each became a story in the [backlog](docs/BACKLOG.md), and each fix landed with the test that reproduces it, between #10 and #19:

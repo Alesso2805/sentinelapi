@@ -35,7 +35,7 @@ A demo app shows it working. It is a portfolio project, so the clarity of its gu
 | --- | --- | --- |
 | Known evasions that get through | 0 | One test per evasion found by the audit of 2026-10-22, listed in the README's Known limitations (SEN-17 to SEN-21) |
 | Legitimate traffic blocked | 0 for a client under its limit, however long it keeps going | Steady-traffic test with a controlled clock, on every backend (SEN-17) |
-| Latency added per request | p95 ≤ 2 ms with Redis on the same host (proposed target) | Benchmark (SEN-35) |
+| Latency added per request | p95 ≤ 2 ms with Redis on the same host | Benchmark (SEN-35): 1.42 ms measured; README › Overhead |
 | Integration effort | Three lines in an existing FastAPI app | The README's snippet runs as a test (SEN-22) |
 | Clean clone to a running demo | One command, no manual steps | `docker compose up` in CI answers `/health` (SEN-29) |
 | CI on every PR | Ruff, format, Mypy strict, architecture tests, Pytest green before merge | GitHub branch protection (SEN-14) |
@@ -256,7 +256,7 @@ A security library that blocks legitimate users is worse than no library. Every 
 | Privacy | Events are visible to operators only; a demo visitor sees only their own | Tests (SEN-26, SEN-32) |
 | Security | Production refuses default or short secrets and the memory backend | Settings tests (SEN-27, AR-10) |
 | Integrity | The audit table is append-only for the app's database role | Test on Postgres (SEN-23, AR-12) |
-| Performance | p95 latency added ≤ 2 ms with Redis on the same host | Benchmark (SEN-35) |
+| Performance | p95 latency added ≤ 2 ms with Redis on the same host | Benchmark (SEN-35): 1.42 ms with Redis in Docker Desktop on the same Windows machine, 0.04 ms with the memory backend; README › Overhead |
 | Reproducibility | The image installs exactly `uv.lock`; the package imports with its required dependencies only | CI (SEN-11, SEN-28, AR-06) |
 | Deployment | `docker compose up` migrates before the API starts | Startup from an empty database in CI (SEN-29) |
 | Observability | JSON logs with a request id; `/ready` checks Redis and the database | Tests (SEN-30) |
@@ -313,7 +313,7 @@ sentinelapi/
 │   ├── contract/                 # every CounterBackend (AR-07)
 │   ├── integration/              # the demo app; migrations on SQLite and Postgres
 │   └── architecture/             # AR-NN
-├── benchmarks/                   # SEN-35
+├── benchmarks/                   # overhead.py: the latency SentinelAPI adds
 ├── deploy/                       # docker-compose.prod.yml, Caddyfile, postgres-init/, backup, restore and verify scripts
 ├── docs/
 │   ├── SPEC.md                   # this document

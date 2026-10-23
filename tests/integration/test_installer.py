@@ -1,4 +1,4 @@
-"""SEN-22: install_sentinel, as an integrator uses it (ADR-0007)."""
+"""install_sentinel, as an integrator uses it (ADR-0007)."""
 
 from __future__ import annotations
 

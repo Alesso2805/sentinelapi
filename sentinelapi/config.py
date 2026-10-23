@@ -17,19 +17,17 @@ class SentinelSettings(BaseSettings):
         env_prefix="SENTINEL_", env_file=".env", extra="ignore", env_ignore_empty=True
     )
 
-    # "production" turns on the refusals of `_refuse_unsafe_production` (SEN-27)
+    # "production" turns on `_refuse_unsafe_production`
     env: Literal["development", "production"] = "development"
 
-    # Storage backend: "memory" (single-process, dev/demo) or "redis" (production).
-    # Anything else fails: a typo must not quietly mean memory.
+    # A Literal, so a typo fails instead of quietly meaning memory.
     backend: Literal["memory", "redis"] = "memory"
     # Production runs Redis: the memory backend counts per process. Set this to
     # run one process on purpose.
     allow_memory_backend: bool = False
     redis_url: str = "redis://localhost:6379/0"
 
-    # Audit log database (any SQLAlchemy async URL — sqlite+aiosqlite for
-    # local/dev, postgresql+asyncpg for production)
+    # Any SQLAlchemy async URL: sqlite+aiosqlite, or postgresql+asyncpg in production
     database_url: str = "sqlite+aiosqlite:///./sentinelapi_audit.db"
     # false: events are only logged, never written to a database
     audit: bool = True
@@ -50,7 +48,6 @@ class SentinelSettings(BaseSettings):
     # proxy, so the direct peer is the client and the header is ignored.
     trusted_proxies: tuple[str, ...] = ()
 
-    # Rate limiting
     rate_limit_max_requests: int = 60
     rate_limit_window_seconds: int = 60
     # A MEDIUM warning when a client's count first passes it; 80 % of the limit if unset
@@ -60,7 +57,6 @@ class SentinelSettings(BaseSettings):
     # Stricter limits per path prefix, on top of the per-client one, e.g. {"/auth/": 10}
     rate_limit_paths: dict[str, int] = Field(default_factory=dict)
 
-    # Brute force
     brute_force_window_seconds: int = 900
     brute_force_per_source_medium: int = 5
     brute_force_per_source_high: int = 10
@@ -77,18 +73,17 @@ class SentinelSettings(BaseSettings):
     jwt_audience: str | None = None
     jwt_issuer: str | None = None
 
-    # Paths the JWT-replay detector should actually check (typically just
-    # your refresh/redeem endpoints — see jwt_replay.py for why)
+    # Only where single-use tokens are redeemed, such as refresh: see jwt_replay.py for why
     jwt_replay_paths: tuple[str, ...] = ("/auth/refresh",)
 
     # A Slack-compatible webhook that hears about CRITICAL events, at most one per account
-    # (or else source) and threat every 10 minutes (SEN-31, SEN-43). Unset: no alerts
+    # (or else source) and threat every 10 minutes. Unset: no alerts
     alert_webhook_url: str | None = None
 
-    # The demo's attack console at / (ADR-0010, SEN-32); off, its routes do not exist
+    # The demo's attack console at / (ADR-0010); off, its routes do not exist
     demo_mode: bool = False
 
-    # The bearer token of the demo's events API (SEN-26). Unset: nobody reads the events
+    # The bearer token of the demo's events API. Unset: nobody reads the events
     operator_token: str | None = None
 
     # If True, HIGH/CRITICAL events return 429/403 instead of just logging

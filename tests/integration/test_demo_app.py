@@ -49,7 +49,6 @@ async def test_repeated_failed_logins_eventually_blocked(client: AsyncClient) ->
 
 
 async def test_the_right_password_does_not_lift_a_block(client: AsyncClient) -> None:
-    """The audit's probe 7: after 12 failures, the right password used to get tokens."""
     for _ in range(12):
         await client.post("/auth/login", json={**ALICE, "password": "wrong"})
     response = await client.post("/auth/login", json=ALICE)
@@ -127,7 +126,6 @@ async def test_forwarded_for_from_an_untrusted_peer_is_ignored(client: AsyncClie
 
 
 async def test_clients_behind_a_trusted_proxy_get_their_own_limits(make_client: ClientFactory) -> None:
-    """The audit's probe 9: behind a proxy, every client used to share the proxy's bucket."""
     # httpx's ASGI transport presents every request as coming from 127.0.0.1: here, the proxy.
     async with make_client(trusted_proxies=["127.0.0.1/32"]) as client:
         noisy = {"X-Forwarded-For": "203.0.113.66"}
@@ -139,7 +137,6 @@ async def test_clients_behind_a_trusted_proxy_get_their_own_limits(make_client: 
 
 
 async def test_tokens_are_signed_with_the_configured_secret(client: AsyncClient) -> None:
-    """SEN-21: the demo used a constant and ignored SENTINEL_JWT_SECRET."""
     login = await client.post("/auth/login", json=ALICE)
     assert (
         await client.get("/me", headers={"Authorization": f"Bearer {login.json()['access_token']}"})

@@ -264,7 +264,7 @@ async def run_scenario(
     session = request.cookies.get(SESSION_COOKIE)
     if not session:
         raise HTTPException(status_code=400, detail="Open the console first.")
-    # 10 runs per hour per visitor's address, counted in the app's own backend.
+    # Counted in the app's own backend, not in a run's sandbox.
     visitor = sentinel.login_guard.fingerprint(request)
     key = f"demo:runs:{visitor.client}"
     if await sentinel.backend.incr_with_expiry(key, 3600) > RUNS_PER_HOUR:

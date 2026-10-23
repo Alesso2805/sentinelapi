@@ -91,7 +91,6 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
     """Each call builds its own SentinelAPI, so tests can run against a
     fresh app with their own counters and their own database."""
     settings = settings or SentinelSettings()
-    # JSON lines in production, for a log aggregator; readable ones on a laptop.
     configure_logging(json_output=settings.env == "production")
     app = FastAPI(title="SentinelAPI demo", version=version("sentinelapi"))
     install_sentinel(app, settings)
@@ -139,7 +138,7 @@ def create_app(settings: SentinelSettings | None = None) -> FastAPI:
 
     @app.get("/ready", response_model=Readiness, responses={503: {"model": Readiness}})
     async def ready(sentinel: Annotated[Sentinel, Depends(get_sentinel)], response: Response) -> Readiness:
-        """Readiness: Redis answers and the audit database is reachable and migrated (SEN-30)."""
+        """Readiness: Redis answers and the audit database is reachable and migrated."""
         checks = await sentinel.ready()
         if not all(checks.values()):
             response.status_code = 503

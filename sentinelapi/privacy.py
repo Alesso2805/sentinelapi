@@ -18,7 +18,7 @@ import secrets
 class Pseudonymizer:
     def __init__(self, key: str | None) -> None:
         # Without a key, one per process: correlation holds until a restart.
-        # Production refuses to start without one (SEN-27).
+        # Production refuses to start without one.
         self.ephemeral = key is None
         self._key = key.encode("utf-8") if key is not None else secrets.token_bytes(32)
 

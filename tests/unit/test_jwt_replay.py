@@ -57,7 +57,7 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.threat_level, ThreatLevel.CRITICAL)
 
     async def test_expired_token_is_flagged_low_not_replay(self) -> None:
-        token = make_refresh_token(expires_in=-10)  # already expired
+        token = make_refresh_token(expires_in=-10)
         event = await self.detector.check(token, self.fp)
 
         assert event is not None
@@ -81,7 +81,6 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         self.assertIn("jti", event.detail)
 
     async def test_a_token_without_exp_is_flagged(self) -> None:
-        """SEN-21: a token without `exp` used to be remembered for one hour only."""
         token = jwt.encode({"sub": "user-123", "jti": str(uuid.uuid4())}, SECRET, algorithm="HS256")
         event = await self.detector.check(token, self.fp)
         assert event is not None
@@ -93,7 +92,7 @@ class TestJWTReplayDetector(unittest.IsolatedAsyncioTestCase):
         detector = JWTReplayDetector(InMemoryBackend(clock=clock), secret=SECRET, clock=clock)
         token = make_refresh_token(expires_in=7 * 24 * 3600)
         self.assertIsNone(await detector.check(token, self.fp))
-        clock.advance(2 * 3600)  # past the hour a token used to be remembered for
+        clock.advance(2 * 3600)
         event = await detector.check(token, self.fp)
         assert event is not None
         self.assertEqual(event.threat_type, ThreatType.JWT_REPLAY)

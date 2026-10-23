@@ -35,7 +35,7 @@ class CounterBackend(Protocol):
         ...
 
     async def reset(self, key: str) -> None:
-        """Clear a key immediately (e.g. after a successful login)."""
+        """Forget `key`, whether it holds a counter or a value."""
         ...
 
     async def decrement(self, key: str, amount: int) -> int:

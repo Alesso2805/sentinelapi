@@ -1,4 +1,4 @@
-"""SEN-31: CRITICAL events reach a webhook, once per target and threat per cooldown, off the request path."""
+"""CRITICAL events reach a webhook, once per target and threat per cooldown, off the request path."""
 
 from __future__ import annotations
 
@@ -78,8 +78,8 @@ async def test_one_alert_per_source_and_threat_per_cooldown() -> None:
 
 
 async def test_an_attack_on_one_account_from_many_sources_is_one_alert() -> None:
-    """SEN-43: credential stuffing comes from a new address every time, so its
-    alerts are held back per account, not per source."""
+    """Credential stuffing comes from a new address every time, so its alerts are held back
+    per account, not per source."""
     receiver = Receiver()
     alerts = alerter(receiver)
 

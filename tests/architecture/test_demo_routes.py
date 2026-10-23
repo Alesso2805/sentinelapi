@@ -18,7 +18,7 @@ PUBLIC_PREFIXES = ("/demo/",)
 
 
 def api_routes() -> list[APIRoute]:
-    # With the console's routes too: demo mode adds them (SEN-32).
+    # With the console's routes too: demo mode adds them.
     app = create_app(SentinelSettings(_env_file=None, demo_mode=True))
     routes = [r for r in app.routes if isinstance(r, APIRoute)]
     assert routes

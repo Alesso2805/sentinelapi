@@ -79,7 +79,7 @@ class SentinelMiddleware:
                 }
             await send(message)
 
-        # Every log line of this request, security events included, carries its id (SEN-30).
+        # Every log line of this request, security events included, carries its id.
         with structlog.contextvars.bound_contextvars(request_id=request_id):
             await self._dispatch(scope, receive, send_with_request_id, headers)
 

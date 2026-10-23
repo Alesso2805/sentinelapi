@@ -1,4 +1,4 @@
-"""Identical events folded into one row: a count and the last one's time (ADR-0006, SEN-25).
+"""Identical events folded into one row: a count and the last one's time (ADR-0006).
 
 Revision ID: 0003
 Revises: 0002

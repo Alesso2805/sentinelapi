@@ -1,5 +1,4 @@
-"""SEN-31 end to end: a replayed refresh token, or credential stuffing (SEN-43), in the demo
-reaches a real HTTP receiver."""
+"""A replayed refresh token, or credential stuffing, in the demo reaches a real HTTP receiver."""
 
 from __future__ import annotations
 
@@ -54,7 +53,7 @@ async def test_a_replayed_token_reaches_the_webhook_once(
 async def test_credential_stuffing_reaches_the_webhook_once(
     make_client: ClientFactory, receiver: tuple[str, list[dict[str, Any]]]
 ) -> None:
-    """SEN-43: one account, a new address every time, attempts going on after the lock."""
+    """One account, a new address every time, attempts going on after the lock."""
     url, received = receiver
     wrong = {**ALICE_LOGIN, "password": "wrong"}
     # httpx's ASGI transport presents every request as coming from 127.0.0.1: here, the proxy.

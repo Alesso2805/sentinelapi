@@ -29,7 +29,6 @@ def _hash_password(password: str, salt: str = "demo-salt") -> str:
     return hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
 
 
-# Demo-only in-memory user store.
 _USERS = {
     "alice@example.com": _hash_password("correct-horse-battery-staple"),
 }

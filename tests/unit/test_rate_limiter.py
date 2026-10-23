@@ -24,7 +24,6 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(levels, [None] * 8 + [ThreatLevel.MEDIUM, None])
 
     async def test_the_request_after_the_limit_is_blocked(self) -> None:
-        """SEN-18: with a limit of 60, the 61st request used to pass until the 121st."""
         limiter = RateLimiter(self.backend, max_requests=3, window_seconds=60)
         for _ in range(3):
             self.assertIsNone(await limiter.check(self.fp, "/api/widgets"))
@@ -84,7 +83,6 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await limiter.check(other_fp, "/api/widgets"))
 
     async def test_a_new_user_agent_does_not_reset_the_count(self) -> None:
-        """The audit's probe 3: 500 requests with a new User-Agent each used to raise no event."""
         limiter = RateLimiter(self.backend, max_requests=5, window_seconds=60)
         events = [
             await limiter.check(build_fingerprint("203.0.113.7", f"ua-{i}"), "/api") for i in range(500)
@@ -92,8 +90,7 @@ class TestRateLimiter(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sum(e is not None and e.is_blocking() for e in events), 495)
 
     async def test_a_client_under_its_limit_is_never_blocked(self) -> None:
-        """The audit's probe 1: one request every 2 s against 60 per 60 s,
-        half the allowed rate, used to be blocked after 4 minutes."""
+        """One request every 2 s against 60 per 60 s: half the allowed rate."""
         clock = FakeClock()
         limiter = RateLimiter(InMemoryBackend(clock=clock), max_requests=60, window_seconds=60)
         events = []

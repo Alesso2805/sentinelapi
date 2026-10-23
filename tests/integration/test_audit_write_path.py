@@ -1,4 +1,4 @@
-"""SEN-25: the audit trail is written off the request path, folded, bounded (ADR-0006)."""
+"""The audit trail is written off the request path, folded, bounded (ADR-0006)."""
 
 from __future__ import annotations
 
@@ -99,7 +99,6 @@ async def test_the_queue_is_bounded_and_drops_are_logged(tmp_path: Path) -> None
 async def test_a_burst_writes_a_couple_of_rows_not_one_per_request(
     make_client: ClientFactory, tmp_path: Path
 ) -> None:
-    """The audit's probe 10: a burst of 125 requests used to write 67 rows."""
     async with make_client() as client:
         for _ in range(125):
             await client.get("/api/widgets")

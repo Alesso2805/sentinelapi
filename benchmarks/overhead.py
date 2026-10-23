@@ -1,4 +1,4 @@
-"""How much latency SentinelAPI adds to a request (SEN-35).
+"""How much latency SentinelAPI adds to a request.
 
 Calls the ASGI app directly, with no network and no HTTP client, so what is
 measured is the middleware and its backend, not the transport. Three apps

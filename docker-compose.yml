@@ -1,4 +1,3 @@
-# The demo stack in one command: `docker compose up --build` (or `make up`).
 # Every value has a development default below; a .env next to this file overrides them,
 # and the server overlay (deploy/docker-compose.prod.yml) requires the secrets there.
 

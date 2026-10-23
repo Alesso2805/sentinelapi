@@ -49,6 +49,12 @@ sentinelapi/
 
 ## Use it in your app
 
+```bash
+pip install "sentinelapi[sqlite]"     # or [postgres], for the audit trail's database; add redis for several processes
+```
+
+Until 1.0.0 is on PyPI, install it from GitHub: `pip install "sentinelapi[sqlite] @ git+https://github.com/Alesso2805/sentinelapi"`. Then create the audit table with `sentinel migrate` (it reads `SENTINEL_DATABASE_URL`), and:
+
 ```python
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel

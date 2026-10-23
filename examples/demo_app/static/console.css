@@ -67,6 +67,32 @@ main,
   padding-top: 40px;
 }
 
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.languages {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.languages button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.languages button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
 .brand {
   margin: 0;
   color: var(--muted);

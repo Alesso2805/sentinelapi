@@ -16,7 +16,7 @@ The portfolio lists SentinelAPI without a demo link (work-portfolio README › P
 
 ## Decision
 
-Options 2 or 3, decided by the product owner when SEN-33 starts, with the same shape either way:
+Options 2 or 3, decided by the product owner when SEN-33 starts, with the same shape either way. On 2026-10-22 the product owner chose option 3: an `e2-small` VM of its own on Google Cloud's free trial, at `sentinelaapi.duckdns.org` (docs/runbooks/deploy.md › On Google Cloud).
 
 - `deploy/docker-compose.prod.yml` on top of `docker-compose.yml`, removing every published port except Caddy's (SEN-29).
 - Caddy terminates HTTPS and routes the hostname (for example `sentinelapi.duckdns.org`) to the demo app.

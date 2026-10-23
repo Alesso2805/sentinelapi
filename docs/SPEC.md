@@ -2,7 +2,7 @@
 
 Oct 22, 2026 · @Alessandro David
 
-This document describes what SentinelAPI is, what was built on August 31, 2026, and what it must become to be released as 1.0.0 with a public demo. Items marked with a story ID (SEN-NN) are not built yet; the story in [BACKLOG.md](BACKLOG.md) is where they get done. Decisions marked "Proposed" in [the ADRs](adr/) wait for the product owner.
+This document describes what SentinelAPI is, what was built on August 31, 2026, and what it became for release 1.0.0 on 2026-10-22, with a public demo. A story ID (SEN-NN) next to an item names the story in [BACKLOG.md](BACKLOG.md) that built or changed it. Every decision in [the ADRs](adr/) is accepted.
 
 ## Vision and problem
 
@@ -289,7 +289,7 @@ A security library that blocks legitimate users is worse than no library. Every 
 
 ## Repository, conventions and living documentation
 
-Target tree. Entries marked with a story do not exist yet.
+The repository's tree.
 
 ```text
 sentinelapi/

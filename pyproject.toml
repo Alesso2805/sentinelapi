@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sentinelapi"
-version = "0.1.0"
+version = "1.0.0"
 description = "Threat-detection middleware for FastAPI: rate limiting, brute-force/credential-stuffing detection, and refresh-token replay protection, with an audit trail."
 dynamic = ["readme"]
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Alessandro David Polanco" }]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
     "Framework :: FastAPI",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",

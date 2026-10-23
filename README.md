@@ -3,6 +3,7 @@
 **Threat-detection middleware for FastAPI.** Add it to an existing app and get fixed-window rate limiting, brute-force detection that also catches credential stuffing, and single-use refresh tokens. Every verdict goes to a private, queryable audit trail.
 
 [![Live demo](https://img.shields.io/badge/live%20demo-sentinelaapi.duckdns.org-2EA44F)](https://sentinelaapi.duckdns.org)
+[![PyPI](https://img.shields.io/pypi/v/sentinelapi?color=3776AB)](https://pypi.org/project/sentinelapi/)
 [![CI](https://github.com/Alesso2805/sentinelapi/actions/workflows/ci.yml/badge.svg)](https://github.com/Alesso2805/sentinelapi/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%E2%80%933.15-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -14,7 +15,7 @@
 
 ![The attack console after credential stuffing: 20 addresses fail once each against one account, and the 8th failure locks it](docs/images/console-stuffing.png)
 
-> **Status:** everything planned for 1.0.0 is built and tested, and the demo is live at **[sentinelaapi.duckdns.org](https://sentinelaapi.duckdns.org)**. One step remains: the first release on PyPI. Until then, install it from GitHub ([Use it in your app](#use-it-in-your-app)). See the [changelog](CHANGELOG.md) and the [backlog](docs/BACKLOG.md).
+> **Status:** 1.0.0, [on PyPI](https://pypi.org/project/sentinelapi/), with the demo live at **[sentinelaapi.duckdns.org](https://sentinelaapi.duckdns.org)**. See the [changelog](CHANGELOG.md).
 
 ## What it catches
 
@@ -57,7 +58,7 @@ You see each request with its verdict, and the audit trail as it is written: you
 pip install "sentinelapi[sqlite]"     # or [postgres], for the audit trail's database; add redis for several processes
 ```
 
-Until 1.0.0 is on PyPI, install it from GitHub: `pip install "sentinelapi[sqlite] @ git+https://github.com/Alesso2805/sentinelapi"`. Then create the audit table with `sentinel migrate` (it reads `SENTINEL_DATABASE_URL`), and:
+Then create the audit table with `sentinel migrate` (it reads `SENTINEL_DATABASE_URL`), and:
 
 ```python
 from fastapi import FastAPI, HTTPException, Request
@@ -347,9 +348,9 @@ Planned in [docs/BACKLOG.md](docs/BACKLOG.md):
 2. Done: detectors without the evasions above.
 3. Done: a three-line integration, and an audit trail that is migrated, private and safe under a flood.
 4. Done: a production-ready stack (safe settings, a reproducible image, one command, readiness and request ids), webhook alerts on CRITICAL events and the attack console.
-5. Done: the deployed demo, runbooks, a measured overhead, the publishing workflow, the demo's OpenAPI document, this README and the changelog. Next: the first release on PyPI and the 1.0.0 tag.
+5. Done: the deployed demo, runbooks, a measured overhead, the package on PyPI, the demo's OpenAPI document, this README and the changelog: release 1.0.0.
 
-After 1.0.0, optional stories: a sliding-window limiter (SEN-39), replay detection for tokens signed with a key pair (SEN-40), the console in Spanish (SEN-41) and Prometheus metrics (SEN-42).
+Next, optional stories: a sliding-window limiter (SEN-39), replay detection for tokens signed with a key pair (SEN-40), the console in Spanish (SEN-41) and Prometheus metrics (SEN-42).
 
 ## Documentation
 

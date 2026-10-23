@@ -4,7 +4,9 @@ All notable changes to SentinelAPI are recorded here. The format follows [Keep a
 
 ## [Unreleased]
 
-Everything since the prototype of 2026-08-31 (0.1.0, never published). It becomes 1.0.0 once the demo is deployed and the package is on PyPI.
+## [1.0.0] - 2026-10-22
+
+The first release: everything since the prototype of 2026-08-31 (0.1.0, never published).
 
 ### Added
 
@@ -76,4 +78,5 @@ Everything since the prototype of 2026-08-31 (0.1.0, never published). It become
 - The demo's events API requires the operator's token; it used to be public.
 - The app's database role can only add and read audit rows.
 
-[Unreleased]: https://github.com/Alesso2805/sentinelapi/commits/main
+[Unreleased]: https://github.com/Alesso2805/sentinelapi/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Alesso2805/sentinelapi/releases/tag/v1.0.0
